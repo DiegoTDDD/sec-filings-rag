@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Conda / venv
+.venv/
+env/
+
+# Data (raw filings and processed chunks are regenerable, keep repo light)
+data/raw/
+data/processed/
+*.parquet
+
+# Qdrant local storage
+qdrant_storage/
+
+# Secrets / environment
+.env
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Logs
+*.log
