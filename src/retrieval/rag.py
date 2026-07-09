@@ -2,7 +2,8 @@
 
 Pipeline stages:
   1. Embed the question (nomic-embed-text via Ollama) and dense-search Qdrant
-     for a wide shortlist of candidate chunks.
+     for a wide shortlist of candidate chunks. An optional ticker filter uses
+     Qdrant's native metadata filtering to restrict search to one company.
   2. Re-rank that shortlist with a cross-encoder and keep the top few.
   3. Build a grounded prompt from those chunks and generate an answer with
      llama3.2 (via Ollama), instructed to answer only from the provided context.
@@ -10,10 +11,8 @@ Pipeline stages:
 
 The grounding instruction (answer only from context; say when unknown) is what
 keeps the system faithful to the filings rather than hallucinating - the property
-RAGAS will later measure.
-
-The LLM is configurable via env vars so the same code runs on a local Ollama
-model by default or a hosted API when LLM_BASE_URL / LLM_MODEL are set.
+RAGAS measures. The LLM is configurable via env vars so the same code runs on a
+local Ollama model by default or a hosted API when LLM_BASE_URL / LLM_MODEL are set.
 
 Usage:
     python src/retrieval/rag.py "your question here"
@@ -23,6 +22,7 @@ import sys
 
 import httpx
 from qdrant_client import QdrantClient
+from qdrant_client.models import FieldCondition, Filter, MatchValue
 from sentence_transformers import CrossEncoder
 
 OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
@@ -34,10 +34,9 @@ RETRIEVE_N = 20
 FINAL_K = 5
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
-# LLM config: defaults to local Ollama, overridable by env vars for a hosted API.
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://localhost:11434/v1")
 LLM_MODEL = os.environ.get("LLM_MODEL", "llama3.2:3b")
-LLM_API_KEY = os.environ.get("LLM_API_KEY", "ollama")  # Ollama ignores the value
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "ollama")
 
 DEFAULT_QUESTION = "How does NVIDIA describe the risk from U.S. export controls to China?"
 
@@ -48,7 +47,7 @@ SYSTEM_PROMPT = (
     "clear, concise answer in prose."
 )
 
-_reranker = None  # loaded lazily so import stays fast
+_reranker = None
 
 
 def embed(text):
@@ -66,15 +65,31 @@ def get_reranker():
     return _reranker
 
 
-def retrieve(question):
-    """Dense-search then cross-encoder re-rank; return the top FINAL_K chunks."""
+def retrieve(question, ticker=None):
+    """Dense-search then cross-encoder re-rank; return the top FINAL_K chunks.
+
+    If ticker is given, Qdrant restricts the search to that company's chunks via
+    a metadata filter - the same mechanism that keeps a high-volume filer (JPM)
+    from crowding out results for a company-specific question.
+    """
     client = QdrantClient(url=QDRANT_URL)
+
+    query_filter = None
+    if ticker:
+        query_filter = Filter(
+            must=[FieldCondition(key="ticker", match=MatchValue(value=ticker))]
+        )
+
     hits = client.query_points(
         collection_name=COLLECTION,
         query=embed(question),
+        query_filter=query_filter,
         limit=RETRIEVE_N,
         with_payload=True,
     ).points
+
+    if not hits:
+        return []
 
     pairs = [(question, h.payload["text"]) for h in hits]
     scores = get_reranker().predict(pairs)
@@ -83,7 +98,6 @@ def retrieve(question):
 
 
 def build_context(chunks):
-    """Number the chunks and label each with its source for the prompt."""
     blocks = []
     for i, h in enumerate(chunks, 1):
         p = h.payload
@@ -93,15 +107,11 @@ def build_context(chunks):
 
 
 def generate(question, context):
-    """Ask the LLM to answer from the context via the OpenAI-compatible endpoint."""
     payload = {
         "model": LLM_MODEL,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": f"Question: {question}\n\nExcerpts:\n{context}",
-            },
+            {"role": "user", "content": f"Question: {question}\n\nExcerpts:\n{context}"},
         ],
         "temperature": 0.1,
     }
@@ -125,8 +135,11 @@ def format_sources(chunks):
     return "\n".join(lines)
 
 
-def answer_question(question):
-    chunks = retrieve(question)
+def answer_question(question, ticker=None):
+    """Run the full pipeline and return (answer_text, source_chunks)."""
+    chunks = retrieve(question, ticker=ticker)
+    if not chunks:
+        return "No relevant excerpts were found for that question.", []
     context = build_context(chunks)
     answer = generate(question, context)
     return answer, chunks
