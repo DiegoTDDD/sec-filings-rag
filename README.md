@@ -9,6 +9,8 @@ Ask *"How does NVIDIA describe the risk from U.S. export controls to China?"* an
 get a concise, prose answer built only from the filings — with the specific
 10-K / 10-Q sections it used listed as sources.
 
+**▶️ [Live demo](https://sec-filings-rag-demo.streamlit.app)** — a public, no-install version with precomputed answers. The fully interactive system runs locally (see [Running it](#running-it)).
+
 ![Dashboard answering a question](docs/screenshots/02_dashboard_answer_aapl.png)
 
 ---

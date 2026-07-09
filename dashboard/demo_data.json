@@ -1,0 +1,298 @@
+[
+  {
+    "question": "How does NVIDIA describe the risk from U.S. export controls to China?",
+    "ticker": "NVDA",
+    "answer": "NVIDIA describes the risk from U.S. export controls to China as a potential negative impact on demand for its products and services in various markets, including China, Europe, Latin America, and Southeast Asia. The company notes that customers may be encouraged to purchase from competitors rather than NVIDIA or other U.S. firms due to compliance burdens and risks associated with export controls. This could harm NVIDIA's business, market position, and financial results.\n\nIn particular, NVIDIA highlights the risk of investing in U.S. advanced semiconductor products, as new products may be subject to unilateral export controls restricting their sale before they are ready for market, resulting in excess inventory and purchase obligations. The company also notes that export controls may disadvantage NVIDIA against certain competitors that sell chips outside the scope of such control.\n\nFurthermore, NVIDIA suggests that export controls may have a disproportionate impact on the company, particularly in regions where customers may be encouraged to \"design-out\" U.S. semiconductors from their products to reduce compliance burdens and risks. This could lead to reduced demand for NVIDIA's products, including data center GPUs and networking products used in servers containing these GPUs.\n\nOverall, NVIDIA views export controls as a significant risk that could harm its business and financial results, particularly in the context of China and other impacted regions.",
+    "sources": [
+      {
+        "ticker": "NVDA",
+        "form": "10-K",
+        "filing_date": "2026-02-25",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "NVDA",
+        "form": "10-Q",
+        "filing_date": "2026-05-20",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "NVDA",
+        "form": "10-K",
+        "filing_date": "2025-02-26",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "NVDA",
+        "form": "10-K",
+        "filing_date": "2026-02-25",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "NVDA",
+        "form": "10-Q",
+        "filing_date": "2026-05-20",
+        "section": "risk_factors"
+      }
+    ]
+  },
+  {
+    "question": "How did NVIDIA's risk factors change year over year?",
+    "ticker": "NVDA",
+    "answer": "The provided excerpts from NVIDIA's SEC filings do not explicitly state how the company's risk factors changed year over year. However, they do mention that there have been no material changes to the risk factors since the previous fiscal year (2025-02-26) and that certain risks, such as competition, may continue to impact the company's business.\n\nExcerpt [1] states that \"there have been no material changes from the risk factors previously described under Item 1A of our Annual Report on Form 10-K for the fiscal year ended January\u00a025, 2026.\" This suggests that the risk factors listed in the previous year's report remain relevant and unchanged.\n\nExcerpt [4] mentions an increase in Graphics segment operating expenses and a decrease in revenue growth, but it does not explicitly state how these changes relate to the company's overall risk profile. Similarly, excerpt [5] provides financial performance data for the first quarter of fiscal year 2027, but it does not discuss any changes in risk factors.\n\nIn summary, while the excerpts provide some information about NVIDIA's business and financial performance, they do not explicitly state how the company's risk factors changed year over year.",
+    "sources": [
+      {
+        "ticker": "NVDA",
+        "form": "10-Q",
+        "filing_date": "2026-05-20",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "NVDA",
+        "form": "10-Q",
+        "filing_date": "2026-05-20",
+        "section": "mda"
+      },
+      {
+        "ticker": "NVDA",
+        "form": "10-Q",
+        "filing_date": "2026-05-20",
+        "section": "mda"
+      },
+      {
+        "ticker": "NVDA",
+        "form": "10-K",
+        "filing_date": "2025-02-26",
+        "section": "mda"
+      },
+      {
+        "ticker": "NVDA",
+        "form": "10-Q",
+        "filing_date": "2026-05-20",
+        "section": "mda"
+      }
+    ]
+  },
+  {
+    "question": "What supply chain risks does Apple disclose?",
+    "ticker": "AAPL",
+    "answer": "According to Apple's SEC filings, the supply chain risks disclosed include:\n\n* Sufficient quantities from suppliers in a timely manner\n* Component suppliers failing or consolidating within an industry\n* Suppliers deciding to concentrate on producing common components instead of customized ones\n* Supply shortages and price increases that can affect business operations, results, financial condition, and stock price\n\nThese risks are highlighted as significant threats to Apple's ability to obtain sufficient quantities of components on commercially reasonable terms, which can have a material adverse impact on its business.",
+    "sources": [
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2024-11-01",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2025-10-31",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2024-11-01",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2024-11-01",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2025-10-31",
+        "section": "risk_factors"
+      }
+    ]
+  },
+  {
+    "question": "What does Apple say about competition in its markets?",
+    "ticker": "AAPL",
+    "answer": "According to Apple's SEC filings, the company faces significant competition in its markets, particularly from companies with substantial technical, marketing, distribution, and other resources. Competitors often compete through aggressive pricing and very low cost structures, as well as by imitating Apple's product features and applications within their products or collaborating to offer more competitive solutions.\n\nApple's ability to compete successfully depends heavily on ensuring the continuing and timely introduction of innovative new products, services, and technologies to the marketplace. The company designs and develops nearly the entire solution for its products, including hardware, operating system, software applications, and related services.\n\nSome competitors have broader product lines, lower-priced products, and a larger installed base of active devices, which can make it challenging for Apple to compete in certain markets. Additionally, competition has been intense as competitors have aggressively cut prices and lowered product margins, posing a risk to the company's business model.\n\nOverall, Apple acknowledges that it faces significant competition in its markets, particularly from companies with substantial resources and capabilities, and must continue to innovate and differentiate its products and services to remain competitive.",
+    "sources": [
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2025-10-31",
+        "section": "business"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2025-10-31",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2024-11-01",
+        "section": "business"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2025-10-31",
+        "section": "business"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2024-11-01",
+        "section": "risk_factors"
+      }
+    ]
+  },
+  {
+    "question": "What regulatory and legal risks does JPMorgan describe?",
+    "ticker": "JPM",
+    "answer": "According to JPMorgan's 10-K filings, the regulatory and legal risks that the company describes include:\n\n* Extensive supervision and regulation, which could impact the company's business and operations\n* Changes to or in the application, interpretation, or enforcement of applicable law, as well as executive branch actions, which could negatively affect the company's business\n* Differences in regulatory implementation in different jurisdictions or with respect to certain competitors, which could negatively impact the company's business\n* Governmental policies that discourage or penalize business relationships with certain industries or require specific business practices, which could negatively affect the company's businesses\n* Penalties and other repercussions that the company could face when resolving litigation or investigations by governmental authorities\n* Less predictable legal and regulatory frameworks in certain jurisdictions, which could negatively impact the company's operations and financial results\n* Litigation and formal and informal regulatory and government investigations, including class actions, derivative actions, and criminal proceedings\n* The processing and safeguarding of personal information, which is subject to applicable law globally related to the collection, use, sharing, storage, and protection of personal information of individuals.\n* Civil and governmental legal proceedings, including investigations and enforcement actions by U.S. and non-U.S. governmental authorities.\n\nThese risks could result in material losses or a decrease in earnings, damage JPMorgan's reputation, cause serious reputational harm, or affect the company's business, financial condition, or results of operations.",
+    "sources": [
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2026-02-13",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2025-02-14",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2026-02-13",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2026-02-13",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2025-02-14",
+        "section": "risk_factors"
+      }
+    ]
+  },
+  {
+    "question": "What risks does JPMorgan associate with economic and market conditions?",
+    "ticker": "JPM",
+    "answer": "According to JPMorgan's SEC filings, the bank associates several risks with economic and market conditions. These include:\n\n* Political risks due to economic uncertainty resulting from political developments\n* Market risks caused by unfavorable economic and market events and conditions, including changes in interest rates and credit spreads, and market fluctuations\n* The potential for previously uncorrelated factors to become correlated, leading to unexpected losses\n* Severe declines in asset values\n* Unexpected credit events, such as credit rating downgrades and large counterparty losses\n* Disruption of trade routes and supply chains globally\n* Inability to effectively hedge risks related to market-making and investment portfolio positions\n\nThese risks can have a material impact on JPMorgan's businesses, investments, and financial condition, including its earnings, liquidity, capital levels, and credit rating.",
+    "sources": [
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2026-02-13",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2025-02-14",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2025-02-14",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2025-02-14",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2026-02-13",
+        "section": "risk_factors"
+      }
+    ]
+  },
+  {
+    "question": "What cybersecurity risks are disclosed across these companies?",
+    "ticker": null,
+    "answer": "The excerpts from JPMorgan Chase & Co.'s SEC filings disclose several cybersecurity risks, including:\n\n* Data loss and business disruptions\n* Misuse or abuse of technology\n* Unauthorized disclosure of data\n* Cyber attacks, including ransomware and supply-chain compromises\n* System breakdowns or failures\n* Misconduct by employees of third-party companies\n* Clients and customers being sources of cybersecurity risk due to their activities and systems being beyond the Firm's own security and control systems\n\nThese risks are acknowledged as material threats that could have a significant impact on the Firm's business strategy, results of operations, or financial condition.",
+    "sources": [
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2025-02-14",
+        "section": "mda"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2026-02-13",
+        "section": "mda"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2026-02-13",
+        "section": "mda"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2025-02-14",
+        "section": "mda"
+      },
+      {
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2026-02-13",
+        "section": "mda"
+      }
+    ]
+  },
+  {
+    "question": "How do these companies describe risks from artificial intelligence?",
+    "ticker": null,
+    "answer": "These companies describe risks from artificial intelligence as intensifying due to its increasing sophistication and widespread use. They highlight several potential risks, including:\n\n* Sophisticated cyberattacks that could pose substantial systemic risks, such as cascading failures across interconnected systems and disruptions to critical infrastructure and market stability.\n* Security threats to artificial intelligence technologies themselves, which can expose companies to additional vulnerabilities and attacks.\n* Legal, regulatory, ethical, and operational risks related to the integration of AI into their products and services, including competition, product liability, intellectual property infringement, data privacy, cybersecurity, sanctions, and export controls.\n* Risks related to bias and discrimination in AI systems, as well as online safety and protection of minors.\n* Safety risks associated with errors, bugs, and vulnerabilities in AI-powered features, which can expose users to harmful or inaccurate content and experiences.\n\nThese companies also note that the rapid advancement and widespread dissemination of AI technologies significantly increases the risks associated with cyberattacks, including targeted phishing campaigns, automated vulnerability exploitation, and deepfake content designed to bypass authentication protocols.",
+    "sources": [
+      {
+        "ticker": "AAPL",
+        "form": "10-Q",
+        "filing_date": "2026-05-01",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-Q",
+        "filing_date": "2026-05-01",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-Q",
+        "filing_date": "2026-05-01",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-Q",
+        "filing_date": "2026-05-01",
+        "section": "risk_factors"
+      },
+      {
+        "ticker": "AAPL",
+        "form": "10-K",
+        "filing_date": "2025-10-31",
+        "section": "risk_factors"
+      }
+    ]
+  }
+]
