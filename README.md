@@ -63,25 +63,32 @@ SERVING        FastAPI service (/ask, /health) + Streamlit dashboard.
 | API | FastAPI + Uvicorn |
 | UI | Streamlit |
 
+Both models run locally through Ollama:
+
+![Ollama models](docs/screenshots/11_ollama_models.png)
+
 The generation LLM is **provider-decoupled**: it defaults to a local Ollama model
 but points to any OpenAI-compatible API by setting `LLM_BASE_URL` / `LLM_MODEL`.
 
 ---
 
-## Key features
+## Indexing: chunking, embeddings and the vector store
 
-- **Traceable citations.** Every chunk carries its origin (ticker, form, filing
-  date, section); answers cite the exact sections used.
-- **Company metadata filtering.** Qdrant filters retrieval to a single company so
-  a high-volume filer (JPM) never crowds out a company-specific question.
-- **Two-stage retrieval.** Fast dense search for recall, then a cross-encoder for
-  precision — a sharper ordering than dense search alone.
-- **Grounded generation.** The model is instructed to answer only from context.
-- **Quantitative evaluation.** RAGAS metrics over a curated question set.
+Each filing section is split into sentence-aware chunks (so a chunk never cuts a
+sentence mid-thought), embedded with `nomic-embed-text`, and stored in Qdrant with
+its provenance metadata (ticker, form, filing date, section). For the default
+three-company corpus this produces roughly **3,187 vectors**.
+
+![Qdrant collection stats — 3,187 points](docs/screenshots/08_qdrant_collection.png)
+
+Qdrant runs as a Docker service; its web UI shows the stored points with their
+768-dimension vectors and metadata payloads:
+
+![Qdrant web UI](docs/screenshots/09_qdrant_web_ui.png)
 
 ---
 
-## How retrieval + re-ranking work
+## Retrieval + re-ranking
 
 Dense (bi-encoder) search embeds the question and each chunk independently — fast
 but coarse. A cross-encoder instead reads the *(question, chunk)* pair together
@@ -91,6 +98,33 @@ re-ranks that shortlist with the cross-encoder and keeps the best few. In practi
 the dense scores cluster tightly (~0.78–0.80), while the cross-encoder separates
 the candidates more decisively, promoting the passages that most directly answer
 the question.
+
+**Company metadata filtering.** When a question targets one company, Qdrant
+restricts retrieval to that company's chunks — so a high-volume filer (JPM) never
+crowds out a company-specific question. The dashboard exposes this as a filter:
+
+![Company filter — NVIDIA](docs/screenshots/03_dashboard_filter_nvda.png)
+
+The same grounding works across all three companies, e.g. JPMorgan:
+
+![JPMorgan answer](docs/screenshots/04b_dashboard_jpm.png)
+
+---
+
+## Serving: API and dashboard
+
+The pipeline is exposed as a **FastAPI** service (`/ask`, `/health`) with
+auto-generated OpenAPI docs:
+
+![API overview](docs/screenshots/05_api_swagger.png)
+
+Each `/ask` call returns the grounded answer plus the source chunks used, with an
+optional `ticker` filter:
+
+![/ask executed](docs/screenshots/06_api_ask_executed.png)
+
+The **Streamlit** dashboard is a thin UI over that API — company filter, example
+questions, and answers with cited sources (shown at the top of this README).
 
 ---
 
@@ -160,7 +194,6 @@ python src/ingestion/ingest.py        # download filings + extract clean section
 python src/indexing/chunk.py          # sentence-aware chunking (downloads NLTK punkt on first run)
 python src/indexing/index_qdrant.py   # embed chunks + load into Qdrant
 ```
-This populates the `sec_filings` collection (≈3,187 chunks for the default corpus).
 
 ### 5. Serve the API and dashboard
 ```bash
@@ -185,31 +218,6 @@ python src/evaluation/evaluate_ragas.py
 
 ---
 
-## Screenshots
-
-**Dashboard**
-
-![Home](docs/screenshots/01_dashboard_home.png)
-![Company filter — NVIDIA](docs/screenshots/03_dashboard_filter_nvda.png)
-![JPMorgan](docs/screenshots/04b_dashboard_jpm.png)
-
-**API (FastAPI / Swagger)**
-
-![API overview](docs/screenshots/05_api_swagger.png)
-![/ask executed](docs/screenshots/06_api_ask_executed.png)
-
-**Vector store (Qdrant)**
-
-![Qdrant collection in the web UI](docs/screenshots/09_qdrant_web_ui.png)
-![Collection stats — 3,187 points](docs/screenshots/08_qdrant_collection.png)
-
-**Local models & structure**
-
-![Ollama models](docs/screenshots/11_ollama_models.png)
-![Project structure](docs/screenshots/12_project_structure.png)
-
----
-
 ## Project structure
 
 ```
@@ -224,6 +232,8 @@ sec-filings-rag/
 ├── docs/screenshots/    case-study images
 └── data/                raw + processed filings (gitignored)
 ```
+
+![Project structure in VS Code](docs/screenshots/12_project_structure.png)
 
 ---
 
