@@ -11,6 +11,8 @@ get a concise, prose answer built only from the filings — with the specific
 
 **▶️ [Live demo](https://sec-filings-rag-demo.streamlit.app)** — a public, no-install version with precomputed answers. The fully interactive system runs locally (see [Running it](#running-it)).
 
+The demo lives in a separate, lightweight repository, [sec-filings-rag-demo](https://github.com/DiegoTDDD/sec-filings-rag-demo), so the free host installs only `streamlit` instead of this project's full dependency set (about 150 pinned packages, including PyTorch). It holds copies of `dashboard/demo_app.py` and `dashboard/demo_data.json`; the answers are generated here by `src/retrieval/precompute_demo.py`. To refresh the demo, regenerate the data, copy both files to the demo repository and push.
+
 ![Dashboard answering a question](docs/screenshots/02_dashboard_answer_aapl.png)
 
 ---
@@ -264,8 +266,9 @@ Environment-specific issues you may hit depending on your OS / package versions:
   MD&A, Business); parsing dense financial tables is future work.
 - **Corpus size.** Three companies × recent filings by design (quality over
   quantity); the ingestion is parameterized by ticker and scales horizontally.
-- **Deployment.** The system runs locally against Qdrant + Ollama; a hosted demo
-  would swap the local LLM for an API using the existing env-var configuration.
+- **Deployment.** The system runs locally against Qdrant + Ollama. The public
+  demo serves precomputed answers; a fully interactive hosted version would swap
+  the local LLM for an API using the existing env-var configuration.
 
 ---
 
