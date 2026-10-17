@@ -11,7 +11,7 @@ get a concise, prose answer built only from the filings — with the specific
 
 **▶️ [Live demo](https://sec-filings-rag-demo.streamlit.app)** — a public, no-install version with precomputed answers. The fully interactive system runs locally (see [Running it](#running-it)).
 
-The demo lives in a separate, lightweight repository, [sec-filings-rag-demo](https://github.com/DiegoTDDD/sec-filings-rag-demo), so the free host installs only `streamlit` instead of this project's full dependency set (about 150 pinned packages, including PyTorch). It holds copies of `dashboard/demo_app.py` and `dashboard/demo_data.json`; the answers are generated here by `src/retrieval/precompute_demo.py`. To refresh the demo, regenerate the data, copy both files to the demo repository and push.
+The demo lives in a separate, lightweight repository, [sec-filings-rag-demo](https://github.com/DiegoTDDD/sec-filings-rag-demo), so the free host installs only `streamlit` instead of this project's full dependency set (about 150 pinned packages, including PyTorch). It holds copies of `dashboard/demo_app.py` and `dashboard/demo_data.json`; the answers are generated here by `src/retrieval/precompute_demo.py`. To refresh it, see [Refreshing the public demo](#refreshing-the-public-demo).
 
 ![Dashboard answering a question](docs/screenshots/02_dashboard_answer_aapl.png)
 
@@ -169,6 +169,7 @@ order. Commands assume a `bash`-style shell.
   ollama pull nomic-embed-text
   ollama pull llama3.2:3b
   ```
+- Platform: developed on Windows. The pinned `requirements.txt` resolves on Windows and Linux. On macOS it needs an Apple Silicon Mac with macOS 14 or newer, because the pinned PyTorch has no wheels for Intel Macs.
 
 ### 2. Environment
 ```bash
@@ -219,6 +220,15 @@ python src/retrieval/rag.py "How does NVIDIA describe export control risk?"
 ```bash
 python src/evaluation/evaluate_ragas.py
 ```
+
+### Refreshing the public demo
+
+The [public demo](https://sec-filings-rag-demo.streamlit.app) serves the answers saved in `dashboard/demo_data.json`. To regenerate them:
+
+1. Start Qdrant and Ollama, and make sure the index is built (steps 3 and 4 above).
+2. Optional: edit the `DEMO_QUESTIONS` list in `src/retrieval/precompute_demo.py` to change the questions.
+3. Run `python src/retrieval/precompute_demo.py` in the project environment (see Troubleshooting if `SSL_CERT_FILE` errors on conda for Windows). It writes `dashboard/demo_data.json`.
+4. Copy `dashboard/demo_app.py` and `dashboard/demo_data.json` to the root of the [sec-filings-rag-demo](https://github.com/DiegoTDDD/sec-filings-rag-demo) repository (both files must sit in the same folder), then commit and push. Streamlit Community Cloud redeploys the app when its branch is updated.
 
 ---
 
