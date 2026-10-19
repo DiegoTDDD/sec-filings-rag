@@ -1,0 +1,67 @@
+name: Dependency check
+
+# Installs the pinned requirements.txt from scratch on Linux and on Apple Silicon
+# macOS, checks there are no conflicts, imports the key libraries, compiles the
+# source and loads the reranker model. The "2.13.0" column tests a newer PyTorch
+# BEFORE it is adopted in requirements.txt.
+on:
+  push:
+    paths:
+      - requirements.txt
+      - ".github/workflows/deps-check.yml"
+  workflow_dispatch:
+
+env:
+  PIP_NO_CACHE_DIR: "1"
+
+jobs:
+  install:
+    name: ${{ matrix.os }} / torch ${{ matrix.torch }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+        torch: [current, "2.13.0"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Use the candidate PyTorch
+        if: matrix.torch != 'current'
+        run: |
+          sed -i.bak "s/^torch==.*/torch==${{ matrix.torch }}/" requirements.txt
+          grep -n "^torch==" requirements.txt
+
+      - name: Install requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip check
+
+      - name: Import the key libraries
+        run: |
+          python - <<'PY'
+          import torch, transformers, sentence_transformers, langchain, qdrant_client, fastapi, streamlit, nltk, git
+          print("torch", torch.__version__, "| transformers", transformers.__version__,
+                "| sentence-transformers", sentence_transformers.__version__)
+          PY
+
+      - name: Compile the source
+        run: python -m compileall -q src api dashboard
+
+      - name: Load the reranker and score a pair
+        run: |
+          python - <<'PY'
+          from sentence_transformers import CrossEncoder
+          model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+          scores = model.predict([("What was revenue?", "Revenue for the year was 10 billion dollars."),
+                                  ("What was revenue?", "The office cat is orange.")])
+          print("scores:", scores)
+          assert scores[0] > scores[1], "reranker ranks an irrelevant sentence higher"
+          PY
