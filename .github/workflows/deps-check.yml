@@ -1,6 +1,6 @@
 name: Dependency check
 
-# Installs the pinned requirements.txt from scratch on Linux and on Apple Silicon
+# Installs the pinned requirements.txt from scratch on Linux, Windows and Apple Silicon
 # macOS, checks there are no conflicts, imports the key libraries, compiles the
 # source and loads the reranker model. The "2.13.0" column tests a newer PyTorch
 # BEFORE it is adopted in requirements.txt.
@@ -19,10 +19,13 @@ jobs:
     name: ${{ matrix.os }} / torch ${{ matrix.torch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-latest, macos-14, windows-latest]
         torch: [current, "2.13.0"]
     steps:
       - uses: actions/checkout@v4
@@ -55,13 +58,34 @@ jobs:
       - name: Compile the source
         run: python -m compileall -q src api dashboard
 
-      - name: Load the reranker and score a pair
+      - name: Sentence splitting works (nltk)
         run: |
           python - <<'PY'
-          from sentence_transformers import CrossEncoder
-          model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-          scores = model.predict([("What was revenue?", "Revenue for the year was 10 billion dollars."),
-                                  ("What was revenue?", "The office cat is orange.")])
-          print("scores:", scores)
-          assert scores[0] > scores[1], "reranker ranks an irrelevant sentence higher"
+          import sys, traceback
+          try:
+              import nltk
+              for r in ("punkt", "punkt_tab"):
+                  nltk.download(r, quiet=True)
+              s = nltk.sent_tokenize("Apple Inc. reported net sales of $383.3 billion. The U.S. share was 42%. See Note 5.")
+              print(s)
+              assert len(s) == 3, s
+          except BaseException:
+              print("::error::nltk step failed: " + " | ".join(traceback.format_exc().strip().splitlines()[-5:]))
+              sys.exit(1)
+          PY
+
+      - name: Load the reranker and score a pair
+        run: |
+          python -X faulthandler - <<'PY'
+          import sys, traceback
+          try:
+              from sentence_transformers import CrossEncoder
+              model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+              scores = model.predict([("What was revenue?", "Revenue for the year was 10 billion dollars."),
+                                      ("What was revenue?", "The office cat is orange.")])
+              print("scores:", scores)
+              assert scores[0] > scores[1], f"reranker ranks an irrelevant sentence higher: {scores}"
+          except BaseException:
+              print("::error::reranker step failed: " + " | ".join(traceback.format_exc().strip().splitlines()[-5:]))
+              sys.exit(1)
           PY
