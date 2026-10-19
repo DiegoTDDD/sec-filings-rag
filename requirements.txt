@@ -17,7 +17,6 @@ click==8.4.2
 colorama==0.4.6
 datasets==5.0.1
 dill==0.4.1
-diskcache==5.6.3
 distro==1.9.0
 docstring_parser==0.18.0
 edgartools==5.40.1
@@ -74,7 +73,10 @@ multiprocess==0.70.19
 narwhals==2.23.0
 nest-asyncio==1.6.0
 networkx==3.6.1
-nltk==3.10.3
+# nltk: every release up to 3.10.3 is affected by CVE-2026-81726 (GHSA-8mgp-746c-j5xp) and no fixed
+# release exists yet. This commit of nltk's develop branch contains the fix (PRs #3813 and #3981).
+# Go back to a normal release pin as soon as one newer than 3.10.3 is published.
+nltk @ git+https://github.com/nltk/nltk@323da98f37388421c22e279587cf75e375b99efb
 numpy==2.4.6
 ollama==0.6.2
 openai==2.44.0
@@ -99,7 +101,6 @@ python-multipart==0.0.32
 pywin32==312; sys_platform == "win32"
 PyYAML==6.0.3
 qdrant-client==1.18.0
-ragas==0.3.9
 rank-bm25==0.2.2
 RapidFuzz==3.14.5
 referencing==0.37.0

@@ -217,7 +217,14 @@ python src/retrieval/rag.py "How does NVIDIA describe export control risk?"
 ```
 
 ### (Optional) evaluate with RAGAS
+
+RAGAS is deliberately **not** in `requirements.txt`. Its latest release (and `diskcache`,
+which it pulls in) have open security advisories with no patched version
+(GHSA-95ww-475f-pr4f and GHSA-w8v5-vhqr-4h9v), so a normal install does not ship them.
+Install it only when you want to run the evaluation, in the same environment:
+
 ```bash
+pip install ragas==0.3.9
 python src/evaluation/evaluate_ragas.py
 ```
 
