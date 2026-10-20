@@ -164,6 +164,7 @@ order. Commands assume a `bash`-style shell.
 ### 1. Prerequisites
 - Python 3.11 (conda recommended)
 - Docker (for Qdrant)
+- Git (`pip install` needs it: `nltk` is installed straight from a commit of its repository, see the note under *Environment*)
 - [Ollama](https://ollama.com) installed and running, with the models pulled:
   ```bash
   ollama pull nomic-embed-text
@@ -177,6 +178,13 @@ conda create -n rag python=3.11 -y
 conda activate rag
 pip install -r requirements.txt
 ```
+> **About `nltk`.** Every `nltk` release on PyPI up to 3.10.3 is affected by CVE-2026-81726
+> (GHSA-8mgp-746c-j5xp) and no fixed release exists yet, so `requirements.txt` installs
+> `nltk` from the commit of its `develop` branch that contains the fix. That is why
+> `pip install` needs Git and access to GitHub. The only part of `nltk` this project uses is
+> sentence splitting, which was checked against 3.10.3 on filing-style text and gives the
+> same result. Go back to a normal pinned release as soon as one newer than 3.10.3 is published.
+
 > On newer conda you may first need to accept channel terms of service:
 > `conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main`
 > (repeat for the `/pkgs/r` and `/pkgs/msys2` channels). See **Troubleshooting**
@@ -221,12 +229,16 @@ python src/retrieval/rag.py "How does NVIDIA describe export control risk?"
 RAGAS is deliberately **not** in `requirements.txt`. Its latest release (and `diskcache`,
 which it pulls in) have open security advisories with no patched version
 (GHSA-95ww-475f-pr4f and GHSA-w8v5-vhqr-4h9v), so a normal install does not ship them.
-Install it only when you want to run the evaluation, in the same environment:
+Install it only when you want to run the evaluation, in the same environment. It adds
+`ragas` and `diskcache` and does not change any other pinned version:
 
 ```bash
 pip install ragas==0.3.9
 python src/evaluation/evaluate_ragas.py
 ```
+
+If `import ragas` fails with `No module named 'langchain_community.chat_models.vertexai'`,
+run `python src/evaluation/fix_ragas_import.py` once (see Troubleshooting).
 
 ### Refreshing the public demo
 
@@ -268,7 +280,8 @@ Environment-specific issues you may hit depending on your OS / package versions:
   ```bash
   export SSL_CERT_FILE="$(python -c 'import certifi; print(certifi.where())')"
   ```
-- **RAGAS import error: `No module named 'langchain_community.chat_models.vertexai'`.**
+- **RAGAS import error: `No module named 'langchain_community.chat_models.vertexai'`** (after
+  `pip install ragas==0.3.9`).
   Modern `langchain-community` removed that path while RAGAS still imports from it.
   Since this project uses a local judge (not Vertex AI), the fix is to provide a
   small stub so the import resolves; see `src/evaluation/fix_ragas_import.py`.
@@ -286,6 +299,13 @@ Environment-specific issues you may hit depending on your OS / package versions:
 - **Deployment.** The system runs locally against Qdrant + Ollama. The public
   demo serves precomputed answers; a fully interactive hosted version would swap
   the local LLM for an API using the existing env-var configuration.
+
+---
+
+## Automated checks
+
+- **Dependency check** (`deps-check.yml`) installs the pinned `requirements.txt` from scratch on Linux, Windows and Apple Silicon macOS whenever it changes, runs `pip check`, imports the key libraries, compiles the source, checks sentence splitting and loads the re-ranking model.
+- **Security audit** (`security-audit.yml`) audits `requirements.txt` with `pip-audit` whenever it changes and every Monday. It fails only when a vulnerable package has a fixed version available. `nltk` is installed from a pinned commit and is therefore not covered by the PyPI audit.
 
 ---
 
