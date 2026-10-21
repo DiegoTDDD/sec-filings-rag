@@ -36,8 +36,15 @@ jobs:
       - name: Install requirements.txt
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip check
+          pip install --no-deps -r requirements.txt
+          # The lock deliberately carries Pillow 13, which streamlit still caps at <13 (see requirements.txt).
+          # pip check must report that one limit and nothing else.
+          pip check > pipcheck.txt || true
+          cat pipcheck.txt
+          if grep -v -E "^streamlit [0-9.]+ has requirement pillow<13,>=[0-9.]+, but you have pillow 13\.[0-9.]+\.$" pipcheck.txt | grep -v "^No broken requirements found\.$" | grep -q .; then
+            echo "::error::pip check found a conflict other than the known streamlit/pillow limit"
+            exit 1
+          fi
 
       - name: Import the key libraries
         run: |
@@ -45,6 +52,18 @@ jobs:
           import torch, transformers, sentence_transformers, langchain, qdrant_client, fastapi, streamlit, nltk, git
           print("torch", torch.__version__, "| transformers", transformers.__version__,
                 "| sentence-transformers", sentence_transformers.__version__)
+          PY
+
+      - name: Streamlit renders images with this Pillow
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          script = "import numpy as np, streamlit as st\nfrom PIL import Image\nst.image(np.zeros((8, 8, 3), dtype='uint8'))\nst.image(Image.new('RGB', (8, 8), 'red'))\nst.write('ok')\n"
+          at = AppTest.from_string(script, default_timeout=60).run()
+          assert not at.exception, [e.value for e in at.exception]
+          assert [e.type for e in at.main].count("image") == 2, [e.type for e in at.main]
+          import PIL
+          print("st.image ok with Pillow", PIL.__version__)
           PY
 
       - name: Compile the source
