@@ -176,14 +176,20 @@ order. Commands assume a `bash`-style shell.
 ```bash
 conda create -n rag python=3.11 -y
 conda activate rag
-pip install -r requirements.txt
+pip install --no-deps -r requirements.txt
 ```
+> **Why `--no-deps`?** `requirements.txt` is a complete lock of every package, direct and indirect, so pip must install exactly
+> that and nothing else. It also lets the lock carry Pillow 13.0.0, which fixes eight security advisories in 12.3.0, even
+> though every released Streamlit still declares `pillow<13`. Streamlit only needs Pillow for `st.image`, which CI checks
+> with this combination, and this project does not use it. `pip check` reports that one declared limit and nothing else;
+> that is expected. Drop the override as soon as a Streamlit release allows Pillow 13.
+
 > **About `nltk`.** Every `nltk` release on PyPI up to 3.10.3 is affected by CVE-2026-81726
 > (GHSA-8mgp-746c-j5xp) and no fixed release exists yet, so `requirements.txt` installs
 > `nltk` from the commit of its `develop` branch that contains the fix. That is why
 > `pip install` needs Git and access to GitHub. The only part of `nltk` this project uses is
 > sentence splitting, which was checked against 3.10.3 on filing-style text and gives the
-> same result. Go back to a normal pinned release as soon as one newer than 3.10.3 is published.
+> same result. Go back to a normal pinned release as soon as one newer than 3.10.3 is published: the weekly security audit fails and tells you when that happens.
 
 > On newer conda you may first need to accept channel terms of service:
 > `conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main`
@@ -304,8 +310,8 @@ Environment-specific issues you may hit depending on your OS / package versions:
 
 ## Automated checks
 
-- **Dependency check** (`deps-check.yml`) installs the pinned `requirements.txt` from scratch on Linux, Windows and Apple Silicon macOS whenever it changes, runs `pip check`, imports the key libraries, compiles the source, checks sentence splitting and loads the re-ranking model.
-- **Security audit** (`security-audit.yml`) audits `requirements.txt` with `pip-audit` whenever it changes and every Monday. It fails only when a vulnerable package has a fixed version available. `nltk` is installed from a pinned commit and is therefore not covered by the PyPI audit.
+- **Dependency check** (`deps-check.yml`) installs the pinned `requirements.txt` (with `--no-deps`) from scratch on Linux, Windows and Apple Silicon macOS whenever it changes, runs `pip check` (the only accepted finding is the Streamlit/Pillow limit described above), checks that Streamlit renders images with this Pillow, imports the key libraries, compiles the source, checks sentence splitting and loads the re-ranking model.
+- **Security audit** (`security-audit.yml`) audits `requirements.txt` with `pip-audit` whenever it changes and every Monday. It fails only when a vulnerable package has a fixed version available. `nltk` is installed from a pinned commit, which the PyPI audit cannot see, so the same job also fails as soon as PyPI publishes an `nltk` release newer than 3.10.3 with no known vulnerability, and tells you to go back to a normal pin (the `audit-git-pin` line in `requirements.txt` drives this).
 
 ---
 

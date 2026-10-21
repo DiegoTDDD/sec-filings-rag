@@ -1,3 +1,10 @@
+# Complete lock of every package (direct and indirect). Install it with:
+#     pip install --no-deps -r requirements.txt
+# --no-deps is intentional: pillow 13.0.0 fixes eight security advisories in 12.3.0, but every released
+# streamlit still declares "pillow<13" (pip would refuse the pair). streamlit only needs Pillow for
+# st.image, which is checked with this combination in CI (deps-check.yml). "pip check" therefore reports
+# that single declared limit. Remove this note and --no-deps once a streamlit release allows Pillow 13.
+
 aiofiles==25.1.0
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.4
@@ -11,7 +18,7 @@ attrs==26.1.0
 beautifulsoup4==4.15.0
 blinker==1.9.0
 cachetools==7.1.4
-certifi==2026.6.17
+certifi==2026.10.19
 charset-normalizer==3.4.9
 click==8.4.2
 colorama==0.4.6
@@ -27,7 +34,7 @@ fsspec==2026.6.0
 gitdb==4.0.12
 GitPython==3.1.62
 greenlet==3.5.3
-grpcio==1.82.0
+grpcio==1.82.1
 h11==0.16.0
 h2==4.4.1
 hf-xet==1.5.1
@@ -75,7 +82,9 @@ nest-asyncio==1.6.0
 networkx==3.6.1
 # nltk: every release up to 3.10.3 is affected by CVE-2026-81726 (GHSA-8mgp-746c-j5xp) and no fixed
 # release exists yet. This commit of nltk's develop branch contains the fix (PRs #3813 and #3981).
-# Go back to a normal release pin as soon as one newer than 3.10.3 is published.
+# Go back to a normal release pin as soon as one newer than 3.10.3 is published: the weekly
+# security audit fails and says so when PyPI has such a release with no known vulnerability.
+# audit-git-pin: nltk newer-than 3.10.3
 nltk @ git+https://github.com/nltk/nltk@323da98f37388421c22e279587cf75e375b99efb
 numpy==2.4.6
 ollama==0.6.2
@@ -84,7 +93,7 @@ orjson==3.11.9
 ormsgpack==1.12.2
 packaging==26.0
 pandas==3.0.3
-pillow==12.3.0
+pillow==13.0.0
 portalocker==3.2.0
 propcache==0.5.2
 protobuf==7.35.1
