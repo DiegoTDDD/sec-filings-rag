@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - requirements.txt
+      - requirements-pillow.txt
       - ".github/workflows/deps-check.yml"
   workflow_dispatch:
 
@@ -33,11 +34,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install requirements.txt
+      - name: Install requirements.txt and requirements-pillow.txt
         run: |
           python -m pip install --upgrade pip
-          pip install --no-deps -r requirements.txt
-          # The lock deliberately carries Pillow 13, which streamlit still caps at <13 (see requirements.txt).
+          pip install -r requirements.txt
+          pip install --no-deps -r requirements-pillow.txt
+          # Pillow 13 is installed on purpose over streamlit's "pillow<13" limit (see requirements-pillow.txt).
           # pip check must report that one limit and nothing else.
           pip check > pipcheck.txt || true
           cat pipcheck.txt
