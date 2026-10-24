@@ -103,3 +103,48 @@ jobs:
               print("::error::reranker step failed: " + " | ".join(traceback.format_exc().strip().splitlines()[-5:]))
               sys.exit(1)
           PY
+
+      # The next steps run the README ("Running it") on Linux. Step 4 (ingestion and indexing) needs Ollama and
+      # the SEC servers and is not run here, but the API and the dashboard start without them.
+      - name: "README step 3: the Qdrant container starts with the exact command"
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          docker run -d --name qdrant -p 127.0.0.1:6333:6333 -p 127.0.0.1:6334:6334 \
+            -v "$(pwd)/qdrant_storage:/qdrant/storage" qdrant/qdrant
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:6333/ >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:6333/ ; echo
+          docker port qdrant | tee ports.txt
+          grep -q "127.0.0.1" ports.txt
+
+      - name: "README step 5: the API starts and serves /health and /docs"
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          nohup python -m uvicorn api.main:app --port 8000 > api.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -sf http://127.0.0.1:8000/health >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:8000/health || { echo "::error::the API did not start"; tail -40 api.log; exit 1; }
+          echo
+          curl -sf http://127.0.0.1:8000/docs >/dev/null
+          curl -sf http://127.0.0.1:8000/openapi.json | python -c "import json,sys; d=json.load(sys.stdin); assert '/ask' in d['paths'] and '/health' in d['paths'], list(d['paths'])"
+          echo "API routes: /ask and /health are there"
+
+      - name: "README step 5: the dashboard starts"
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          nohup python -m streamlit run dashboard/app.py --server.headless true --server.port 8501 > dashboard.log 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -sf http://127.0.0.1:8501/_stcore/health >/dev/null; then echo "dashboard is up on port 8501"; exit 0; fi
+            sleep 2
+          done
+          echo "::error::the dashboard did not start"
+          tail -30 dashboard.log
+          exit 1
+
+      - name: Remove the Qdrant container
+        if: ${{ always() && matrix.os == 'ubuntu-latest' }}
+        run: docker rm -f qdrant || true
