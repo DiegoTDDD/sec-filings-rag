@@ -262,7 +262,10 @@ sec-filings-rag/
 │   ├── retrieval/       dense search + re-rank + RAG pipeline
 │   └── evaluation/      RAGAS harness
 ├── docs/screenshots/    case-study images
-└── data/                raw + processed filings (gitignored)
+├── data/                raw + processed filings (gitignored)
+├── .github/             CI: dependency check, security audit
+├── requirements.txt     pinned versions of everything (install first)
+└── requirements-pillow.txt  Pillow 13, installed right after requirements.txt
 ```
 
 ![Project structure in VS Code](docs/screenshots/12_project_structure.png)
@@ -303,8 +306,8 @@ Environment-specific issues you may hit depending on your OS / package versions:
 
 ## Automated checks
 
-- **Dependency check** (`deps-check.yml`) installs `requirements.txt` and then `requirements-pillow.txt` from scratch on Linux, Windows and Apple Silicon macOS whenever it changes, runs `pip check` (the only accepted finding is the Streamlit/Pillow limit described above), checks that Streamlit renders images with this Pillow, imports the key libraries, compiles the source, checks sentence splitting and loads the re-ranking model.
-- **Security audit** (`security-audit.yml`) audits `requirements.txt` with `pip-audit` whenever it changes and every Monday. It fails only when a vulnerable package has a fixed version available.
+- **Dependency check** (`deps-check.yml`) installs `requirements.txt` and then `requirements-pillow.txt` from scratch on Linux, Windows and Apple Silicon macOS whenever it changes, runs `pip check` (the only accepted finding is the Streamlit/Pillow limit described above), checks that Streamlit renders images with this Pillow, imports the key libraries, compiles the source, checks sentence splitting and loads the re-ranking model. On Linux it also runs README steps 3 and 5: it starts the Qdrant container with the exact command shown there, then starts the API (`/health`, `/docs`) and the dashboard. Step 4 (ingestion and indexing) needs Ollama and the SEC servers, so it is not run in CI.
+- **Security audit** (`security-audit.yml`) audits `requirements.txt` and `requirements-pillow.txt` with `pip-audit` whenever it changes and every Monday. It fails only when a vulnerable package has a fixed version available.
 
 ---
 
