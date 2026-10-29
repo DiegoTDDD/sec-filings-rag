@@ -176,14 +176,7 @@ order. Commands assume a `bash`-style shell.
 conda create -n rag python=3.11 -y
 conda activate rag
 pip install -r requirements.txt
-pip install --no-deps -r requirements-pillow.txt
 ```
-> **Why two files?** Pillow 13.0.0 fixes eight security advisories in 12.3.0, but every released Streamlit still
-> declares `pillow<13`, so pip refuses to install both in one go. `requirements.txt` therefore leaves Pillow out and
-> `requirements-pillow.txt` installs it afterwards with `--no-deps`. Streamlit only needs Pillow for `st.image`, which CI
-> checks with this combination, and this project does not use it. `pip check` reports that one declared limit and
-> nothing else; that is expected. Merge the two files again as soon as a Streamlit release allows Pillow 13.
-
 > On newer conda you may first need to accept channel terms of service:
 > `conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main`
 > (repeat for the `/pkgs/r` and `/pkgs/msys2` channels). See **Troubleshooting**
@@ -264,8 +257,7 @@ sec-filings-rag/
 ├── docs/screenshots/    case-study images
 ├── data/                raw + processed filings (gitignored)
 ├── .github/             CI: dependency check, security audit
-├── requirements.txt     pinned versions of everything (install first)
-└── requirements-pillow.txt  Pillow 13, installed right after requirements.txt
+└── requirements.txt     pinned versions of everything
 ```
 
 ![Project structure in VS Code](docs/screenshots/12_project_structure.png)
@@ -306,8 +298,8 @@ Environment-specific issues you may hit depending on your OS / package versions:
 
 ## Automated checks
 
-- **Dependency check** (`deps-check.yml`) installs `requirements.txt` and then `requirements-pillow.txt` from scratch on Linux, Windows and Apple Silicon macOS whenever it changes, runs `pip check` (the only accepted finding is the Streamlit/Pillow limit described above), checks that Streamlit renders images with this Pillow, imports the key libraries, compiles the source, checks sentence splitting and loads the re-ranking model. On Linux it also runs README steps 3 and 5: it starts the Qdrant container with the exact command shown there, then starts the API (`/health`, `/docs`) and the dashboard. Step 4 (ingestion and indexing) needs Ollama and the SEC servers, so it is not run in CI.
-- **Security audit** (`security-audit.yml`) audits `requirements.txt` and `requirements-pillow.txt` with `pip-audit` whenever it changes and every Monday. It fails only when a vulnerable package has a fixed version available.
+- **Dependency check** (`deps-check.yml`) installs `requirements.txt` from scratch on Linux, Windows and Apple Silicon macOS whenever it changes, runs `pip check`, checks that Streamlit renders images with this Pillow, imports the key libraries, compiles the source, checks sentence splitting and loads the re-ranking model. On Linux it also runs README steps 3 and 5: it starts the Qdrant container with the exact command shown there, then starts the API (`/health`, `/docs`) and the dashboard. Step 4 (ingestion and indexing) needs Ollama and the SEC servers, so it is not run in CI.
+- **Security audit** (`security-audit.yml`) audits `requirements.txt` with `pip-audit` whenever it changes and every Monday. It fails only when a vulnerable package has a fixed version available.
 
 ---
 
