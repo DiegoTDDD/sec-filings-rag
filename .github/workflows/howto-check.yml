@@ -40,7 +40,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install --no-deps -r requirements-pillow.txt
 
       - name: "README prerequisite: Ollama with nomic-embed-text and llama3.2:3b"
         run: |

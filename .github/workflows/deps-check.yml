@@ -7,7 +7,6 @@ on:
   push:
     paths:
       - requirements.txt
-      - requirements-pillow.txt
       - ".github/workflows/deps-check.yml"
   workflow_dispatch:
 
@@ -34,19 +33,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install requirements.txt and requirements-pillow.txt
+      - name: Install requirements.txt
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install --no-deps -r requirements-pillow.txt
-          # Pillow 13 is installed on purpose over streamlit's "pillow<13" limit (see requirements-pillow.txt).
-          # pip check must report that one limit and nothing else.
-          pip check > pipcheck.txt || true
-          cat pipcheck.txt
-          if grep -v -E "^streamlit [0-9.]+ has requirement pillow<13,>=[0-9.]+, but you have pillow 13\.[0-9.]+\.$" pipcheck.txt | grep -v "^No broken requirements found\.$" | grep -q .; then
-            echo "::error::pip check found a conflict other than the known streamlit/pillow limit"
-            exit 1
-          fi
+          pip check
 
       - name: Import the key libraries
         run: |
