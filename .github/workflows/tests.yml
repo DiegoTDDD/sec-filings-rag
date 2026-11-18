@@ -29,7 +29,7 @@ jobs:
         run: pip install -r requirements-test.txt ruff
 
       - name: Lint
-        run: ruff check tests api src/indexing/chunk.py src/retrieval/rag.py src/retrieval/strategies.py src/ingestion/ingest.py src/evaluation/build_eval_set.py src/evaluation/retrieval_eval.py
+        run: ruff check tests api src/indexing/chunk.py src/retrieval/rag.py src/retrieval/strategies.py src/ingestion/ingest.py src/evaluation/build_eval_set.py src/evaluation/retrieval_eval.py src/evaluation/generate_answers.py src/evaluation/evaluate_ragas.py src/evaluation/merge_ragas.py
 
       - name: Run unit tests
         run: pytest

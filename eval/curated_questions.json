@@ -1,0 +1,35 @@
+{
+  "note": "Hand-written questions and reference answers (the original 6-question set).",
+  "questions": [
+    {
+      "id": "c01",
+      "question": "How does NVIDIA describe the risk from U.S. export controls to China?",
+      "reference_answer": "NVIDIA states that U.S. export controls restrict sales of its data center GPUs and related products to China, can disproportionately harm NVIDIA, may reduce demand, and encourage customers to design out U.S. semiconductors or buy from competitors, hurting its competitive position and financial results."
+    },
+    {
+      "id": "c02",
+      "question": "What supply chain risks does Apple disclose?",
+      "reference_answer": "Apple discloses dependence on outsourced manufacturing and component supply concentrated in a few regions, exposure to disruptions, component shortages, supplier concentration, and geopolitical and logistics risks that could raise costs or limit product availability."
+    },
+    {
+      "id": "c03",
+      "question": "What regulatory and legal risks does JPMorgan describe?",
+      "reference_answer": "JPMorgan describes extensive regulation across jurisdictions, capital and liquidity requirements, potential fines and enforcement actions, litigation, and the risk that new or changing regulation increases compliance costs and constrains its business."
+    },
+    {
+      "id": "c04",
+      "question": "How does NVIDIA describe demand for its data center products?",
+      "reference_answer": "NVIDIA describes strong demand for its data center and AI computing platforms driving revenue growth, while noting demand can be volatile and is exposed to supply constraints and export restrictions."
+    },
+    {
+      "id": "c05",
+      "question": "What does Apple say about competition in its markets?",
+      "reference_answer": "Apple describes highly competitive markets characterized by rapid technological change, aggressive pricing, frequent new product introductions, and competitors with significant resources, which pressure margins and market share."
+    },
+    {
+      "id": "c06",
+      "question": "What risks does JPMorgan associate with economic and market conditions?",
+      "reference_answer": "JPMorgan associates risks with macroeconomic and market conditions such as interest rate changes, inflation, recessions, market volatility, and credit deterioration, which can reduce revenue and increase credit losses."
+    }
+  ]
+}
