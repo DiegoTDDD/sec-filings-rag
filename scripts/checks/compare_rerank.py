@@ -11,7 +11,7 @@ This script prints both rankings side by side so the effect of re-ranking is
 visible.
 
 Usage:
-    python src/retrieval/test_rerank.py "your question here"
+    python scripts/checks/compare_rerank.py "your question here"
 """
 import sys
 

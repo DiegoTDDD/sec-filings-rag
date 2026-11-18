@@ -60,7 +60,7 @@ jobs:
           PY
 
       - name: Compile the source
-        run: python -m compileall -q src api dashboard
+        run: python -m compileall -q src api dashboard scripts tests
 
       - name: Sentence splitting works (nltk)
         run: |

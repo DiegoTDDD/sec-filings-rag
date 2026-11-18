@@ -1,5 +1,9 @@
 # SEC Filings RAG
 
+[![Tests](https://github.com/DiegoTDDD/sec-filings-rag/actions/workflows/tests.yml/badge.svg)](https://github.com/DiegoTDDD/sec-filings-rag/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python 3.11](https://img.shields.io/badge/python-3.11-blue)
+
 An end-to-end Retrieval-Augmented Generation (RAG) system that answers questions
 about the SEC filings (10-K and 10-Q) of **Apple, NVIDIA and JPMorgan**, grounding
 every answer in the source documents and citing the exact filing and section it
@@ -232,6 +236,15 @@ python src/evaluation/evaluate_ragas.py
 If `import ragas` fails with `No module named 'langchain_community.chat_models.vertexai'`,
 run `python src/evaluation/fix_ragas_import.py` once (see Troubleshooting).
 
+### Running the tests
+
+The unit tests do not need Qdrant, Ollama or the full dependency set:
+```bash
+pip install -r requirements-test.txt
+pytest
+```
+The scripts in `scripts/checks/` are manual diagnostics that talk to the live services (EDGAR, Qdrant, Ollama); run them from the project root, for example `python scripts/checks/compare_rerank.py "your question"`.
+
 ### Refreshing the public demo
 
 The [public demo](https://sec-filings-rag-demo.streamlit.app) serves the answers saved in `dashboard/demo_data.json`. To regenerate them:
@@ -254,10 +267,14 @@ sec-filings-rag/
 │   ├── indexing/        chunking + embeddings + Qdrant load
 │   ├── retrieval/       dense search + re-rank + RAG pipeline
 │   └── evaluation/      RAGAS harness
+├── tests/               unit tests (pytest), external services mocked
+├── scripts/checks/      manual diagnostics against live EDGAR / Qdrant / Ollama
 ├── docs/screenshots/    case-study images
 ├── data/                raw + processed filings (gitignored)
-├── .github/             CI: dependency check, security audit
-└── requirements.txt     pinned versions of everything
+├── .github/             CI: tests, demo sync, dependency check, security audit
+├── pyproject.toml       project metadata, pytest and ruff settings
+├── requirements.txt     pinned versions of everything
+└── requirements-test.txt  light set for the unit tests
 ```
 
 ![Project structure in VS Code](docs/screenshots/12_project_structure.png)
@@ -298,6 +315,7 @@ Environment-specific issues you may hit depending on your OS / package versions:
 
 ## Automated checks
 
+- **Tests** (`tests.yml`) runs on every push and pull request: `ruff` lint plus 24 unit tests covering sentence-aware chunking (size limit, overlap, no lost sentences), ingestion (file naming, skipping cross-reference stubs), the RAG pipeline (ticker filter, re-rank order, grounded prompt, empty-retrieval handling) and the API (`/health`, `/ask`, ticker normalization, validation). Qdrant, Ollama, the LLM and PyTorch are replaced by stand-ins, so the job needs only `requirements-test.txt`. A second job checks that the public demo repository holds the same `demo_app.py` and `demo_data.json` as `dashboard/`, so the live demo cannot drift from this project unnoticed.
 - **Dependency check** (`deps-check.yml`) installs `requirements.txt` from scratch on Linux, Windows and Apple Silicon macOS whenever it changes, runs `pip check`, checks that Streamlit renders images with this Pillow, imports the key libraries, compiles the source, checks sentence splitting and loads the re-ranking model. On Linux it also runs README steps 3 and 5: it starts the Qdrant container with the exact command shown there, then starts the API (`/health`, `/docs`) and the dashboard. Step 4 (ingestion and indexing) needs Ollama and the SEC servers, so it is not run in CI.
 - **Security audit** (`security-audit.yml`) audits `requirements.txt` with `pip-audit` whenever it changes and every Monday. It fails only when a vulnerable package has a fixed version available.
 

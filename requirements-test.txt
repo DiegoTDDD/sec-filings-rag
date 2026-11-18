@@ -1,0 +1,8 @@
+# Lightweight set for the unit tests: no PyTorch, Qdrant or Ollama needed,
+# because tests/conftest.py stands in for those services.
+# Versions match the pins in requirements.txt.
+fastapi==0.139.0
+pydantic==2.13.4
+httpx==0.28.1
+nltk==3.10.4
+pytest==8.4.2

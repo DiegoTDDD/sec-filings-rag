@@ -13,8 +13,8 @@ Run:
     uvicorn api.main:app --port 8000
 """
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -22,10 +22,19 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src" / "retrieval"))
 import rag  # noqa: E402
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Load the cross-encoder once at startup so the first request isn't slow."""
+    rag.get_reranker()
+    yield
+
+
 app = FastAPI(
     title="SEC Filings RAG API",
     description="Ask questions about AAPL, NVDA and JPM 10-K/10-Q filings with cited sources.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 VALID_TICKERS = {"AAPL", "NVDA", "JPM"}
@@ -33,7 +42,7 @@ VALID_TICKERS = {"AAPL", "NVDA", "JPM"}
 
 class AskRequest(BaseModel):
     question: str
-    ticker: Optional[str] = None  # optional company filter: AAPL, NVDA or JPM
+    ticker: str | None = None  # optional company filter: AAPL, NVDA or JPM
 
 
 class Source(BaseModel):
@@ -45,15 +54,9 @@ class Source(BaseModel):
 
 class AskResponse(BaseModel):
     question: str
-    ticker: Optional[str]
+    ticker: str | None
     answer: str
     sources: list[Source]
-
-
-@app.on_event("startup")
-def warm_up():
-    """Load the cross-encoder once at startup so the first request isn't slow."""
-    rag.get_reranker()
 
 
 @app.get("/health")

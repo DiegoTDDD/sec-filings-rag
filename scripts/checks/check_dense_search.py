@@ -5,7 +5,7 @@ add re-ranking and the LLM. Each result is shown with its provenance so we can
 see that citations will be traceable back to a specific filing and section.
 
 Usage:
-    python src/retrieval/test_search.py "your question here"
+    python scripts/checks/check_dense_search.py "your question here"
 If no question is passed, a default NVIDIA export-control query is used.
 """
 import sys

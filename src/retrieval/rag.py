@@ -93,7 +93,7 @@ def retrieve(question, ticker=None):
 
     pairs = [(question, h.payload["text"]) for h in hits]
     scores = get_reranker().predict(pairs)
-    ranked = sorted(zip(scores, hits), key=lambda x: x[0], reverse=True)
+    ranked = sorted(zip(scores, hits, strict=True), key=lambda x: x[0], reverse=True)
     return [h for _, h in ranked[:FINAL_K]]
 
 
