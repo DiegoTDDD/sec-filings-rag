@@ -152,7 +152,7 @@ runner, writes the question set, compares retrieval strategies, answers every
 question and scores the answers with RAGAS on six runners in parallel. It runs on
 demand and once a month; the last run took about 2.5 hours.
 
-**Question set.** 57 questions: the 6 original hand-written questions plus 51
+**Question set.** 66 questions: the 6 original hand-written questions plus 60
 generated from the indexed chunks by `llama3.2:3b` (stratified across company,
 form and section; questions that leak the setup, such as "according to the
 excerpt", or that do not name the company are discarded). Each generated question
@@ -162,11 +162,11 @@ comes from one known chunk, which makes retrieval measurable exactly.
 
 | Strategy | hit@5 | MRR@5 | recall@20 |
 |---|---|---|---|
-| Dense (nomic-embed-text) | 0.47 | 0.28 | 0.76 |
-| BM25 keyword | 0.92 | 0.63 | 0.98 |
-| Hybrid (dense + BM25, RRF) | 0.78 | 0.48 | 0.96 |
-| Dense + re-rank (previous pipeline) | 0.73 | 0.52 | 0.76 |
-| **Hybrid + re-rank (current pipeline)** | **0.80** | **0.56** | **0.96** |
+| Dense (nomic-embed-text) | 0.43 | 0.27 | 0.75 |
+| BM25 keyword | 0.92 | 0.63 | 0.97 |
+| Hybrid (dense + BM25, RRF) | 0.77 | 0.46 | 0.97 |
+| Dense + re-rank (previous pipeline) | 0.70 | 0.49 | 0.75 |
+| **Hybrid + re-rank (current pipeline)** | **0.80** | **0.57** | **0.97** |
 
 *hit@5: the chunk the question was written from is among the 5 chunks given to the
 LLM. recall@20: it is in the 20-candidate shortlist before re-ranking. Full table
@@ -174,7 +174,7 @@ in [`eval/retrieval_results.md`](eval/retrieval_results.md).*
 
 Dense search alone left the source chunk out of the shortlist for about a quarter
 of the questions, and the re-ranker cannot recover a chunk it never sees. Adding
-BM25 with Reciprocal Rank Fusion raised recall@20 from 0.76 to 0.96, so the
+BM25 with Reciprocal Rank Fusion raised recall@20 from 0.75 to 0.97, so the
 pipeline now retrieves with both. BM25 alone scored highest, but that number is
 optimistic: a question written from a chunk reuses its wording, which favours
 keyword search, while real users paraphrase. Hybrid keeps dense search for those.
@@ -183,17 +183,19 @@ keyword search, while real users paraphrase. Hybrid keeps dense search for those
 
 | Questions | n | Faithfulness | Answer relevancy | Context precision | Context recall |
 |---|---|---|---|---|---|
-| All | 57 | 0.81 | 0.46 | 0.72 | 0.92 |
-| Hand-written | 6 | 0.99 | 0.73 | 0.98 | 0.91 |
-| Generated | 51 | 0.79 | 0.43 | 0.69 | 0.92 |
+| All | 66 | 0.82 | 0.52 | 0.73 | 0.93 |
+| Hand-written | 6 | 0.94 | 0.58 | 0.97 | 0.87 |
+| Generated | 60 | 0.81 | 0.52 | 0.71 | 0.93 |
 
 *Answers by `llama3.2:3b`, judged by `qwen2.5:7b`, a larger model than the one
-being graded. All 57 questions received all four scores. Per-question scores are in
+being graded. Every question was scored on every metric except one context-precision
+score that the judge failed to produce after all retries (reported, not dropped). The
+previous run, on 57 questions, gave the same picture. Per-question scores are in
 the `rag-eval-report` artifact of each run.*
 
-- **Faithfulness 0.81** and **context recall 0.92**: answers mostly stay within
+- **Faithfulness 0.82** and **context recall 0.93**: answers mostly stay within
   the retrieved text, and the retrieved text covers the reference answers.
-- **Answer relevancy 0.46** is the weak point. The metric rewards answers that
+- **Answer relevancy 0.52** is the weak point. The metric rewards answers that
   address the question directly; a 3B generator often answers partially or says
   the context is insufficient, which this metric scores low. A stronger generator
   is the next lever, and the harness measures the effect of swapping it.
@@ -359,7 +361,7 @@ Environment-specific issues you may hit depending on your OS / package versions:
 ## Limitations & future work
 
 - **Small generator.** `llama3.2:3b` keeps everything free and local, and it is
-  the main reason answer relevancy is 0.46. A larger model (local or via the
+  the main reason answer relevancy is 0.52. A larger model (local or via the
   existing API settings) is the next step, measured by the same evaluation.
 - **Synthetic questions.** Generated questions reuse their source chunk's wording,
   which flatters keyword search; a larger hand-written set would complement them.

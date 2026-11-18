@@ -14,12 +14,12 @@ Run dense search (Qdrant) and BM25 keyword search over the same chunks, merge th
 - **More dense candidates (e.g. 50).** Raises recall a little but does not fix exact-term misses, and makes re-ranking slower.
 
 ## Consequences
-Measured on the same 51 questions (`eval/retrieval_results.md`):
+Measured on the same 60 questions (`eval/retrieval_results.md`; the earlier 51-question run gave 0.73 → 0.80 and 0.76 → 0.96):
 
 | | hit@5 | recall@20 |
 |---|---|---|
-| Dense + re-rank (before) | 0.73 | 0.76 |
-| Hybrid + re-rank (now) | 0.80 | 0.96 |
+| Dense + re-rank (before) | 0.70 | 0.75 |
+| Hybrid + re-rank (now) | 0.80 | 0.97 |
 
 - The BM25 index lives in memory (built once at API start-up from `chunks.json`), which is fine at 3,200 chunks but would need a search engine at millions.
 - The re-ranker now sees better candidates, but it is still the slowest step on CPU.

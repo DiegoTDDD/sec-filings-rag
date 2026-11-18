@@ -17,7 +17,7 @@ The first evaluation had six hand-written questions judged by the same 3B model 
 - **Hosted judge (GPT-4-class).** More reliable judging, but paid (see [0001](0001-local-models-only.md)).
 
 ## Consequences
-- The first hybrid run scored hit@5 0.80 and recall@20 0.96 for retrieval, and faithfulness 0.81 / context recall 0.92 for answers, with no unscored entries.
+- On 66 questions the hybrid pipeline scores hit@5 0.80 and recall@20 0.97 for retrieval, and faithfulness 0.82 / context recall 0.93 for answers. One context-precision score was unscored and is reported as such. The earlier 57-question run gave the same picture.
 - Synthetic questions reuse their chunk's wording, which favours BM25. The results compare strategies with each other; they are not absolute numbers for real users.
 - Local generation on CPU is not exactly reproducible, so the question set changes slightly between runs. The run fails if fewer than 50 valid questions are produced.
 - A full run takes about two and a half hours of runner time.

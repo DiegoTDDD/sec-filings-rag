@@ -20,5 +20,5 @@ The generator is reached through `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY`, s
 
 ## Consequences
 - Zero cost; the full evaluation runs on free GitHub runners (see `.github/workflows/rag-eval.yml`).
-- A 3B generator is the main quality ceiling: answer relevancy is 0.46 on the synthetic set (0.73 on the hand-written questions) while faithfulness is 0.81. A larger generator is the first lever if quality matters more than cost.
+- A 3B generator is the main quality ceiling: answer relevancy is 0.52 on the synthetic set (0.58 on the hand-written questions) while faithfulness is 0.82. A larger generator is the first lever if quality matters more than cost.
 - Judging on CPU is slow, so the RAGAS run is split across six parallel runners.
