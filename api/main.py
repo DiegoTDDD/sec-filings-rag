@@ -25,8 +25,9 @@ import rag  # noqa: E402
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load the cross-encoder once at startup so the first request isn't slow."""
+    """Load the cross-encoder and the BM25 index once at startup so the first request isn't slow."""
     rag.get_reranker()
+    rag.get_bm25()
     yield
 
 

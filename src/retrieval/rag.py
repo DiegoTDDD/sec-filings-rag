@@ -1,9 +1,12 @@
 """Full RAG pipeline over SEC filings: retrieve, re-rank, generate, cite.
 
 Pipeline stages:
-  1. Embed the question (nomic-embed-text via Ollama) and dense-search Qdrant
-     for a wide shortlist of candidate chunks. An optional ticker filter uses
-     Qdrant's native metadata filtering to restrict search to one company.
+  1. Hybrid retrieval: embed the question (nomic-embed-text via Ollama) and
+     dense-search Qdrant, run a BM25 keyword search over the same chunks, and
+     merge both shortlists with Reciprocal Rank Fusion. An optional ticker
+     filter restricts both searches to one company. (RETRIEVAL_MODE=dense
+     keeps dense search only; see eval/retrieval_results.md for why hybrid is
+     the default.)
   2. Re-rank that shortlist with a cross-encoder and keep the top few.
   3. Build a grounded prompt from those chunks and generate an answer with
      llama3.2 (via Ollama), instructed to answer only from the provided context.
@@ -17,8 +20,10 @@ local Ollama model by default or a hosted API when LLM_BASE_URL / LLM_MODEL are 
 Usage:
     python src/retrieval/rag.py "your question here"
 """
+
 import os
 import sys
+from pathlib import Path
 
 import httpx
 from qdrant_client import QdrantClient
@@ -32,6 +37,8 @@ COLLECTION = "sec_filings"
 
 RETRIEVE_N = 20
 FINAL_K = 5
+RETRIEVAL_MODE = os.environ.get("RETRIEVAL_MODE", "hybrid")  # "hybrid" or "dense"
+CHUNKS_PATH = Path("data/processed/chunks.json")
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://localhost:11434/v1")
@@ -48,6 +55,7 @@ SYSTEM_PROMPT = (
 )
 
 _reranker = None
+_bm25 = None
 
 
 def embed(text):
@@ -65,20 +73,40 @@ def get_reranker():
     return _reranker
 
 
-def retrieve(question, ticker=None):
-    """Dense-search then cross-encoder re-rank; return the top FINAL_K chunks.
+class _Chunk:
+    """Gives BM25 results the same `.payload` shape as Qdrant points."""
 
-    If ticker is given, Qdrant restricts the search to that company's chunks via
-    a metadata filter - the same mechanism that keeps a high-volume filer (JPM)
-    from crowding out results for a company-specific question.
+    def __init__(self, payload):
+        self.payload = payload
+
+
+def get_bm25():
+    """BM25 index over data/processed/chunks.json, built once; None if the file is missing."""
+    global _bm25
+    if _bm25 is None:
+        from strategies import BM25Index, load_chunks
+
+        if CHUNKS_PATH.exists():
+            _bm25 = BM25Index(load_chunks(CHUNKS_PATH))
+        else:
+            print(f"[rag] {CHUNKS_PATH} not found: using dense retrieval only", file=sys.stderr)
+            _bm25 = False
+    return _bm25 or None
+
+
+def retrieve(question, ticker=None, mode=None):
+    """Hybrid (or dense) search, then cross-encoder re-rank; return the top FINAL_K chunks.
+
+    If ticker is given, both searches are restricted to that company's chunks -
+    the same mechanism that keeps a high-volume filer (JPM) from crowding out
+    results for a company-specific question.
     """
+    mode = mode or RETRIEVAL_MODE
     client = QdrantClient(url=QDRANT_URL)
 
     query_filter = None
     if ticker:
-        query_filter = Filter(
-            must=[FieldCondition(key="ticker", match=MatchValue(value=ticker))]
-        )
+        query_filter = Filter(must=[FieldCondition(key="ticker", match=MatchValue(value=ticker))])
 
     hits = client.query_points(
         collection_name=COLLECTION,
@@ -88,13 +116,22 @@ def retrieve(question, ticker=None):
         with_payload=True,
     ).points
 
-    if not hits:
+    candidates = list(hits)
+    bm25 = get_bm25() if mode == "hybrid" else None
+    if bm25 is not None:
+        from strategies import rrf_fuse
+
+        keyword = bm25.search(question, RETRIEVE_N, ticker=ticker)
+        fused = rrf_fuse([[h.payload for h in hits], keyword], RETRIEVE_N)
+        candidates = [_Chunk(payload) for payload in fused]
+
+    if not candidates:
         return []
 
-    pairs = [(question, h.payload["text"]) for h in hits]
+    pairs = [(question, c.payload["text"]) for c in candidates]
     scores = get_reranker().predict(pairs)
-    ranked = sorted(zip(scores, hits, strict=True), key=lambda x: x[0], reverse=True)
-    return [h for _, h in ranked[:FINAL_K]]
+    ranked = sorted(zip(scores, candidates, strict=True), key=lambda x: x[0], reverse=True)
+    return [c for _, c in ranked[:FINAL_K]]
 
 
 def build_context(chunks):
@@ -129,9 +166,7 @@ def format_sources(chunks):
     lines = []
     for i, h in enumerate(chunks, 1):
         p = h.payload
-        lines.append(
-            f"[{i}] {p['ticker']} {p['form']} filed {p['filing_date']} - {p['section']}"
-        )
+        lines.append(f"[{i}] {p['ticker']} {p['form']} filed {p['filing_date']} - {p['section']}")
     return "\n".join(lines)
 
 

@@ -1,4 +1,5 @@
 """RAG pipeline logic with the external services (Qdrant, Ollama, LLM) mocked."""
+
 import rag
 
 
@@ -16,8 +17,13 @@ class _Response:
 def test_context_numbers_each_excerpt_and_carries_its_source(make_point):
     chunks = [
         make_point("Export controls limit sales to China.", ticker="NVDA"),
-        make_point("Suppliers are concentrated in Asia.", ticker="AAPL", form="10-Q",
-                   filing_date="2026-01-30", section="mda"),
+        make_point(
+            "Suppliers are concentrated in Asia.",
+            ticker="AAPL",
+            form="10-Q",
+            filing_date="2026-01-30",
+            section="mda",
+        ),
     ]
     context = rag.build_context(chunks)
 
@@ -110,7 +116,7 @@ def test_retrieve_applies_ticker_filter_and_keeps_best_reranked(monkeypatch, mak
     monkeypatch.setattr(rag, "embed", lambda text: [0.0, 1.0])
     monkeypatch.setattr(rag, "get_reranker", lambda: FakeReranker())
 
-    result = rag.retrieve("question", ticker="AAPL")
+    result = rag.retrieve("question", ticker="AAPL", mode="dense")
 
     assert captured["query_filter"] is not None
     assert "AAPL" in repr(captured["query_filter"])
@@ -132,5 +138,62 @@ def test_retrieve_without_ticker_does_not_filter(monkeypatch):
     monkeypatch.setattr(rag, "QdrantClient", FakeClient)
     monkeypatch.setattr(rag, "embed", lambda text: [0.0])
 
-    assert rag.retrieve("question") == []
+    assert rag.retrieve("question", mode="dense") == []
     assert captured["query_filter"] is None
+
+
+def test_hybrid_merges_keyword_hits_before_reranking(monkeypatch, make_point):
+    import strategies
+
+    dense_hits = [make_point("dense only chunk")]
+    dense_hits[0].payload.update(source_file="a.txt", chunk_index=0)
+    keyword_chunk = {
+        "text": "CET1 capital ratio chunk",
+        "ticker": "JPM",
+        "form": "10-K",
+        "filing_date": "2026-02-14",
+        "section": "mda",
+        "source_file": "b.txt",
+        "chunk_index": 3,
+    }
+
+    class FakeClient:
+        def __init__(self, url):
+            pass
+
+        def query_points(self, **kwargs):
+            return type("Result", (), {"points": dense_hits})()
+
+    class FakeReranker:
+        def predict(self, pairs):
+            return [1.0 if "CET1" in text else 0.0 for _, text in pairs]
+
+    monkeypatch.setattr(rag, "QdrantClient", FakeClient)
+    monkeypatch.setattr(rag, "embed", lambda text: [0.0])
+    monkeypatch.setattr(rag, "get_reranker", lambda: FakeReranker())
+    monkeypatch.setattr(rag, "get_bm25", lambda: strategies.BM25Index([keyword_chunk]))
+
+    result = rag.retrieve("What is the CET1 capital ratio?", mode="hybrid")
+    assert [c.payload["text"] for c in result] == ["CET1 capital ratio chunk", "dense only chunk"]
+
+
+def test_hybrid_falls_back_to_dense_without_chunks_file(monkeypatch, tmp_path, make_point):
+    monkeypatch.setattr(rag, "CHUNKS_PATH", tmp_path / "missing.json")
+    monkeypatch.setattr(rag, "_bm25", None)
+    assert rag.get_bm25() is None
+
+    class FakeClient:
+        def __init__(self, url):
+            pass
+
+        def query_points(self, **kwargs):
+            return type("Result", (), {"points": [make_point("only dense")]})()
+
+    class FakeReranker:
+        def predict(self, pairs):
+            return [0.5 for _ in pairs]
+
+    monkeypatch.setattr(rag, "QdrantClient", FakeClient)
+    monkeypatch.setattr(rag, "embed", lambda text: [0.0])
+    monkeypatch.setattr(rag, "get_reranker", lambda: FakeReranker())
+    assert [c.payload["text"] for c in rag.retrieve("q", mode="hybrid")] == ["only dense"]

@@ -11,6 +11,11 @@ Chunks overlap by ~150 characters, so a question can also be fully answered by
 the chunk right before or after its source. The "adjacent" columns count those
 neighbours (same file, chunk_index +-1) as hits; the strict columns do not.
 
+Known bias: a question written from a chunk tends to reuse that chunk's words,
+which favours keyword search (BM25). The numbers compare strategies on the same
+footing, but BM25's absolute scores here are optimistic for real users, who
+paraphrase. That is why the pipeline uses hybrid retrieval, not BM25 alone.
+
 Input:  eval/eval_set.json, data/processed/chunks.json, Qdrant + Ollama running
 Output: eval/retrieval_results.json and eval/retrieval_results.md
 """
@@ -40,8 +45,9 @@ STRATEGIES = [
     ("dense", "Dense (nomic-embed-text)"),
     ("bm25", "BM25 keyword"),
     ("hybrid", "Hybrid (dense + BM25, RRF)"),
-    ("dense_rerank", "Dense + cross-encoder re-rank (current pipeline)"),
-    ("hybrid_rerank", "Hybrid + cross-encoder re-rank"),
+    ("dense_rerank", "Dense + cross-encoder re-rank (previous pipeline)"),
+    ("bm25_rerank", "BM25 + cross-encoder re-rank"),
+    ("hybrid_rerank", "Hybrid + cross-encoder re-rank (current pipeline)"),
 ]
 
 
@@ -78,6 +84,7 @@ def run_strategies(question, bm25):
         "bm25": (keyword[:FINAL_K], keyword),
         "hybrid": (hybrid[:FINAL_K], hybrid),
         "dense_rerank": (rerank(question, dense, FINAL_K), dense),
+        "bm25_rerank": (rerank(question, keyword, FINAL_K), keyword),
         "hybrid_rerank": (rerank(question, hybrid, FINAL_K), hybrid),
     }
 
@@ -85,6 +92,9 @@ def run_strategies(question, bm25):
 def to_markdown(results, n_questions):
     lines = [
         f"Retrieval on {n_questions} synthetic questions, each written from one known chunk.",
+        "",
+        "Questions written from a chunk tend to reuse its words, which favours BM25; "
+        "compare strategies with each other rather than reading BM25's scores as absolute.",
         "",
         "| Strategy | hit@1 | hit@5 | MRR@5 | recall@20 | hit@5 (adjacent) |",
         "|---|---|---|---|---|---|",

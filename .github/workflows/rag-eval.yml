@@ -3,7 +3,7 @@ name: RAG evaluation
 # Full evaluation of the RAG on GitHub runners, with local models only (no API keys, no cost):
 #   1. retrieval: builds the index (SEC download, chunking, Ollama embeddings, Qdrant), writes a synthetic
 #      question set from the indexed chunks, compares retrieval strategies (dense, BM25, hybrid RRF, each
-#      with and without the cross-encoder re-ranker) and runs the RAG over every question.
+#      with and without the cross-encoder re-ranker) and runs the RAG (hybrid + re-rank) over every question.
 #   2. judge (6 machines in parallel): RAGAS faithfulness, answer relevancy, context precision and
 #      context recall, judged by a larger local model than the one that wrote the answers.
 #   3. report: merges the scores into one table.
