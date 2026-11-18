@@ -11,14 +11,11 @@ This script writes a tiny stub module at the expected path that exposes a dummy
 ChatVertexAI, satisfying RAGAS's import without pulling in Google dependencies.
 Run once; it's idempotent.
 """
-import os
+
+import logging
 from pathlib import Path
 
-import langchain_community
-
-# Locate the chat_models package inside the installed langchain_community.
-base = Path(langchain_community.__file__).parent / "chat_models"
-target = base / "vertexai.py"
+log = logging.getLogger(__name__)
 
 stub = '''"""Compatibility stub: ChatVertexAI moved to langchain-google-vertexai.
 
@@ -35,10 +32,20 @@ class ChatVertexAI:  # noqa: D401 - minimal stub
         )
 '''
 
-if target.exists():
-    print(f"Stub already present at {target}")
-else:
-    target.write_text(stub, encoding="utf-8")
-    print(f"Wrote compatibility stub to {target}")
 
-print("Done. Try importing ragas now.")
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    import langchain_community
+
+    # Locate the chat_models package inside the installed langchain_community.
+    target = Path(langchain_community.__file__).parent / "chat_models" / "vertexai.py"
+    if target.exists():
+        log.info("Stub already present at %s", target)
+    else:
+        target.write_text(stub, encoding="utf-8")
+        log.info("Wrote compatibility stub to %s", target)
+
+
+if __name__ == "__main__":
+    main()

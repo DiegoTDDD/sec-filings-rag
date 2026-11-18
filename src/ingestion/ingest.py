@@ -14,10 +14,18 @@ Section access differs by form (attribute names verified against edgartools 5.40
 Short sections (e.g. a 10-Q Risk Factors that merely cross-references the 10-K)
 fall below MIN_SECTION_CHARS and are skipped to keep the index clean.
 """
+
+from __future__ import annotations
+
 import json
+import logging
+from datetime import date as Date
 from pathlib import Path
+from typing import Any
 
 from edgar import Company, set_identity
+
+log = logging.getLogger(__name__)
 
 set_identity("Diego Leonardo Alves de Andrade diegoleonardo380@gmail.com")
 
@@ -29,17 +37,24 @@ PROCESSED_DIR = Path("data/processed")
 MIN_SECTION_CHARS = 1000  # skip cross-reference stubs and empty sections
 
 
-def clean_filename(ticker, form, date, section):
+def clean_filename(ticker: str, form: str, date: Date | str, section: str) -> str:
     """Build a filesystem-safe, sortable name like AAPL_10-K_2025-10-31_risk_factors.txt."""
     safe_section = section.lower().replace(" ", "_").replace("&", "and")
     return f"{ticker}_{form}_{date}_{safe_section}.txt"
 
 
-def save_section(records, ticker, form, date, section, text):
+def save_section(
+    records: list[dict[str, Any]],
+    ticker: str,
+    form: str,
+    date: Date | str,
+    section: str,
+    text: str | None,
+) -> None:
     """Write one section to disk if it has real content, and log its metadata."""
     if not text or len(text.strip()) < MIN_SECTION_CHARS:
         length = len(text.strip()) if text else 0
-        print(f"    - {section:20} skipped (only {length} chars)")
+        log.info("    - %-20s skipped (only %d chars)", section, length)
         return
     filename = clean_filename(ticker, form, date, section)
     path = PROCESSED_DIR / filename
@@ -54,13 +69,13 @@ def save_section(records, ticker, form, date, section, text):
             "char_count": len(text.strip()),
         }
     )
-    print(f"    - {section:20} OK ({len(text.strip()):,} chars) -> {filename}")
+    log.info("    - %-20s OK (%s chars) -> %s", section, f"{len(text.strip()):,}", filename)
 
 
-def ingest_10k(records, ticker, filing):
+def ingest_10k(records: list[dict[str, Any]], ticker: str, filing: Any) -> None:
     """Extract Business, Risk Factors and MD&A from a 10-K filing."""
     date = filing.filing_date
-    print(f"  10-K {date}")
+    log.info("  10-K %s", date)
     tenk = filing.obj()
     for section, getter in (
         ("business", lambda: tenk.business),
@@ -70,15 +85,15 @@ def ingest_10k(records, ticker, filing):
         try:
             text = getter()
         except Exception as exc:  # noqa: BLE001 - real filings vary; keep going
-            print(f"    - {section:20} error: {exc}")
+            log.warning("    - %-20s error: %s", section, exc)
             continue
         save_section(records, ticker, "10-K", date, section, text)
 
 
-def ingest_10q(records, ticker, filing):
+def ingest_10q(records: list[dict[str, Any]], ticker: str, filing: Any) -> None:
     """Extract MD&A and Risk Factors from a 10-Q using part-qualified keys."""
     date = filing.filing_date
-    print(f"  10-Q {date}")
+    log.info("  10-Q %s", date)
     tenq = filing.obj()
     for section, key in (
         ("mda", "Part I, Item 2"),
@@ -87,17 +102,18 @@ def ingest_10q(records, ticker, filing):
         try:
             text = tenq[key]
         except Exception as exc:  # noqa: BLE001
-            print(f"    - {section:20} error: {exc}")
+            log.warning("    - %-20s error: %s", section, exc)
             continue
         save_section(records, ticker, "10-Q", date, section, text)
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    records = []
+    records: list[dict[str, Any]] = []
 
     for ticker in COMPANIES:
-        print(f"\n=== {ticker} ===")
+        log.info("=== %s ===", ticker)
         company = Company(ticker)
 
         tenk_filings = company.get_filings(form="10-K").head(N_10K)
@@ -110,7 +126,7 @@ def main():
 
     metadata_path = PROCESSED_DIR / "metadata.json"
     metadata_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
-    print(f"\nDone. Wrote {len(records)} sections + metadata.json into {PROCESSED_DIR}/")
+    log.info("Done. Wrote %d sections + metadata.json into %s/", len(records), PROCESSED_DIR)
 
 
 if __name__ == "__main__":

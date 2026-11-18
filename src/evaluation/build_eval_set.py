@@ -21,18 +21,24 @@ Env: GEN_MODEL (default llama3.2:3b), OLLAMA_URL (default http://localhost:11434
      is met instead of trying a fixed number.
 """
 
+from __future__ import annotations
+
 import json
+import logging
 import os
 import random
 import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "retrieval"))
-from strategies import chunk_key, load_chunks  # noqa: E402
+from strategies import Chunk, chunk_key, load_chunks  # noqa: E402
+
+log = logging.getLogger(__name__)
 
 OUT_PATH = Path("eval/eval_set.json")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
@@ -74,17 +80,18 @@ Reply with JSON only: {{"question": "...", "reference_answer": "..."}}"""
 COMPANY_LABEL = {"AAPL": "Apple", "NVDA": "NVIDIA", "JPM": "JPMorgan Chase"}
 
 
-def stratified_sample(chunks, n, seed=SEED):
+def stratified_sample(chunks: list[Chunk], n: int, seed: int = SEED) -> list[Chunk]:
     """Round-robin over (ticker, form, section) groups so no filing dominates."""
     rng = random.Random(seed)
-    groups = defaultdict(list)
+    groups: dict[tuple[str, str, str], list[Chunk]] = defaultdict(list)
     for c in chunks:
         if len(c["text"]) >= MIN_CHUNK_CHARS:
             groups[(c["ticker"], c["form"], c["section"])].append(c)
     for members in groups.values():
         rng.shuffle(members)
     keys = sorted(groups)
-    sample, i = [], 0
+    sample: list[Chunk] = []
+    i = 0
     while len(sample) < n and any(groups.values()):
         key = keys[i % len(keys)]
         if groups[key]:
@@ -93,7 +100,7 @@ def stratified_sample(chunks, n, seed=SEED):
     return sample
 
 
-def is_valid(item, ticker):
+def is_valid(item: dict[str, Any], ticker: str) -> bool:
     """Keep only well-formed questions a real user could ask."""
     question = (item.get("question") or "").strip()
     answer = (item.get("reference_answer") or "").strip()
@@ -106,7 +113,8 @@ def is_valid(item, ticker):
     return any(name in question.lower() for name in COMPANY_NAMES[ticker])
 
 
-def ask_model(chunk, client):
+def ask_model(chunk: Chunk, client: httpx.Client) -> dict[str, Any]:
+    """Ask the local LLM for one question + reference answer about this chunk."""
     prompt = PROMPT.format(
         company=COMPANY_LABEL[chunk["ticker"]],
         form=chunk["form"],
@@ -128,12 +136,16 @@ def ask_model(chunk, client):
     return json.loads(response.json()["message"]["content"])
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     chunks = load_chunks()
     sample = stratified_sample(chunks, CANDIDATES)
-    print(f"{len(chunks)} chunks; up to {len(sample)} candidates, target {TARGET} questions")
+    log.info(
+        "%d chunks; up to %d candidates, target %d questions", len(chunks), len(sample), TARGET
+    )
 
-    items, rejected = [], 0
+    items: list[dict[str, Any]] = []
+    rejected = 0
     with httpx.Client(timeout=300.0) as client:
         for i, chunk in enumerate(sample, 1):
             if len(items) >= TARGET:
@@ -141,7 +153,7 @@ def main():
             try:
                 item = ask_model(chunk, client)
             except Exception as exc:  # noqa: BLE001 - a bad generation just drops that chunk
-                print(f"[{i}/{len(sample)}] generation failed: {exc}")
+                log.warning("[%d/%d] generation failed: %s", i, len(sample), exc)
                 rejected += 1
                 continue
             if not is_valid(item, chunk["ticker"]):
@@ -160,8 +172,9 @@ def main():
                     "chunk_index": chunk_index,
                 }
             )
-            print(
-                f"[{i}/{len(sample)}] {chunk['ticker']} {chunk['section']}: {items[-1]['question']}"
+            log.info(
+                "[%d/%d] %s %s: %s", i, len(sample), chunk["ticker"], chunk["section"],
+                items[-1]["question"],
             )
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -169,7 +182,7 @@ def main():
         json.dumps({"generator": GEN_MODEL, "seed": SEED, "questions": items}, indent=2),
         encoding="utf-8",
     )
-    print(f"\nKept {len(items)} questions, rejected {rejected}. Written to {OUT_PATH}")
+    log.info("Kept %d questions, rejected %d. Written to %s", len(items), rejected, OUT_PATH)
 
 
 if __name__ == "__main__":

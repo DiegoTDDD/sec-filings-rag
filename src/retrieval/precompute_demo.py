@@ -10,31 +10,45 @@ Run locally (with Qdrant + Ollama up, in the rag env with SSL_CERT_FILE set):
     python src/retrieval/precompute_demo.py
 Output: dashboard/demo_data.json
 """
+
 import json
+import logging
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from rag import answer_question  # noqa: E402
 
+log = logging.getLogger(__name__)
+
 # Curated demo questions. `ticker` mirrors the dashboard's company filter.
 DEMO_QUESTIONS = [
-    {"question": "How does NVIDIA describe the risk from U.S. export controls to China?", "ticker": "NVDA"},
+    {
+        "question": "How does NVIDIA describe the risk from U.S. export controls to China?",
+        "ticker": "NVDA",
+    },
     {"question": "How did NVIDIA's risk factors change year over year?", "ticker": "NVDA"},
     {"question": "What supply chain risks does Apple disclose?", "ticker": "AAPL"},
     {"question": "What does Apple say about competition in its markets?", "ticker": "AAPL"},
     {"question": "What regulatory and legal risks does JPMorgan describe?", "ticker": "JPM"},
-    {"question": "What risks does JPMorgan associate with economic and market conditions?", "ticker": "JPM"},
+    {
+        "question": "What risks does JPMorgan associate with economic and market conditions?",
+        "ticker": "JPM",
+    },
     {"question": "What cybersecurity risks are disclosed across these companies?", "ticker": None},
-    {"question": "How do these companies describe risks from artificial intelligence?", "ticker": None},
+    {
+        "question": "How do these companies describe risks from artificial intelligence?",
+        "ticker": None,
+    },
 ]
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     results = []
     for i, item in enumerate(DEMO_QUESTIONS, 1):
         q, ticker = item["question"], item["ticker"]
-        print(f"[{i}/{len(DEMO_QUESTIONS)}] {q}  (ticker={ticker})")
+        log.info("[%d/%d] %s  (ticker=%s)", i, len(DEMO_QUESTIONS), q, ticker)
         answer, chunks = answer_question(q, ticker=ticker)
         results.append(
             {
@@ -55,7 +69,7 @@ def main():
 
     out = Path(__file__).resolve().parent.parent.parent / "dashboard" / "demo_data.json"
     out.write_text(json.dumps(results, indent=2), encoding="utf-8")
-    print(f"\nWrote {len(results)} precomputed answers to {out}")
+    log.info("Wrote %d precomputed answers to %s", len(results), out)
 
 
 if __name__ == "__main__":

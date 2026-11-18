@@ -23,10 +23,16 @@ Output: eval/ragas/shard_<i>.csv  (merge with merge_ragas.py)
 Needs:  pip install ragas==0.3.9 and python src/evaluation/fix_ragas_import.py
 """
 
+from __future__ import annotations
+
 import argparse
 import json
+import logging
 import os
 from pathlib import Path
+from typing import Any
+
+log = logging.getLogger(__name__)
 
 ANSWERS = Path("eval/answers.json")
 OUT_DIR = Path("eval/ragas")
@@ -37,14 +43,15 @@ CALL_TIMEOUT = int(os.environ.get("JUDGE_TIMEOUT", "1800"))
 METRIC_NAMES = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
 
 
-def shard_rows(rows, shard, shards):
+def shard_rows(rows: list[dict[str, Any]], shard: int, shards: int) -> list[dict[str, Any]]:
     """Every shards-th row starting at shard, so curated and synthetic questions spread evenly."""
     if not 0 <= shard < shards:
         raise ValueError(f"shard must be in [0, {shards})")
     return rows[shard::shards]
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     parser = argparse.ArgumentParser()
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument("--shards", type=int, default=1)
@@ -65,7 +72,9 @@ def main():
     rows = shard_rows(
         json.loads(ANSWERS.read_text(encoding="utf-8"))["rows"], args.shard, args.shards
     )
-    print(f"shard {args.shard + 1}/{args.shards}: {len(rows)} questions, judge {JUDGE_MODEL}")
+    log.info(
+        "shard %d/%d: %d questions, judge %s", args.shard + 1, args.shards, len(rows), JUDGE_MODEL
+    )
 
     dataset = Dataset.from_dict(
         {
@@ -91,8 +100,8 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out = OUT_DIR / f"shard_{args.shard}.csv"
     df.to_csv(out, index=False)
-    print(result)
-    print(f"Per-question scores written to {out}")
+    log.info("%s", result)
+    log.info("Per-question scores written to %s", out)
 
 
 if __name__ == "__main__":

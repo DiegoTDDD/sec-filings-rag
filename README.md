@@ -51,11 +51,13 @@ RETRIEVAL      Hybrid search: dense (Qdrant) + BM25 keywords, fused with RRF
 GENERATION     Grounded prompt over the top passages → llama3.2 (via Ollama) →
                prose answer + traceable sources.
                      │
-EVALUATION     57-question set, retrieval strategy comparison and RAGAS
-               (all four metrics) with a separate local judge, on GitHub Actions.
+EVALUATION     Hand-written + synthetic question set, retrieval strategy comparison
+               and RAGAS (all four metrics) with a separate local judge, on GitHub Actions.
                      │
 SERVING        FastAPI service (/ask, /health) + Streamlit dashboard.
 ```
+
+The reasoning behind each major choice (local models, Qdrant, chunking, hybrid retrieval, the separate demo, the evaluation method) is recorded in [`docs/adr/`](docs/adr/README.md), with the alternatives that were rejected and what each choice costs.
 
 ---
 
@@ -322,6 +324,8 @@ sec-filings-rag/
 ├── eval/                question sets and the latest evaluation results
 ├── tests/               unit tests (pytest), external services mocked
 ├── scripts/checks/      manual diagnostics against live EDGAR / Qdrant / Ollama
+├── scripts/exploration/ one-off scripts used to understand the filings' structure
+├── docs/adr/            architecture decision records
 ├── docs/screenshots/    case-study images
 ├── data/                raw + processed filings (gitignored)
 ├── .github/             CI: tests, demo sync, dependency check, security audit
@@ -372,7 +376,7 @@ Environment-specific issues you may hit depending on your OS / package versions:
 ## Automated checks
 
 - **RAG evaluation** (`rag-eval.yml`) runs on demand and monthly: full index on a runner, synthetic question set, retrieval comparison and RAGAS scoring across six runners, all with local models (see [Evaluation](#evaluation)).
-- **Tests** (`tests.yml`) runs on every push and pull request: `ruff` lint plus 42 unit tests covering sentence-aware chunking (size limit, overlap, no lost sentences), ingestion (file naming, skipping cross-reference stubs), the RAG pipeline (ticker filter, hybrid fusion, re-rank order, grounded prompt, empty-retrieval handling), the evaluation code (question filtering, retrieval metrics, sharding, merging) and the API (`/health`, `/ask`, ticker normalization, validation). Qdrant, Ollama, the LLM and PyTorch are replaced by stand-ins, so the job needs only `requirements-test.txt`. A second job checks that the public demo repository holds the same `demo_app.py` and `demo_data.json` as `dashboard/`, so the live demo cannot drift from this project unnoticed.
+- **Tests** (`tests.yml`) runs on every push and pull request: `ruff` lint (including type hints on every pipeline and API function, and no `print` in pipeline code: progress goes through `logging`) plus 42 unit tests covering sentence-aware chunking (size limit, overlap, no lost sentences), ingestion (file naming, skipping cross-reference stubs), the RAG pipeline (ticker filter, hybrid fusion, re-rank order, grounded prompt, empty-retrieval handling), the evaluation code (question filtering, retrieval metrics, sharding, merging) and the API (`/health`, `/ask`, ticker normalization, validation). Qdrant, Ollama, the LLM and PyTorch are replaced by stand-ins, so the job needs only `requirements-test.txt`. A second job checks that the public demo repository holds the same `demo_app.py` and `demo_data.json` as `dashboard/`, so the live demo cannot drift from this project unnoticed.
 - **Dependency check** (`deps-check.yml`) installs `requirements.txt` from scratch on Linux, Windows and Apple Silicon macOS whenever it changes, runs `pip check`, checks that Streamlit renders images with this Pillow, imports the key libraries, compiles the source, checks sentence splitting and loads the re-ranking model. On Linux it also runs README steps 3 and 5: it starts the Qdrant container with the exact command shown there, then starts the API (`/health`, `/docs`) and the dashboard. Step 4 (ingestion and indexing) needs Ollama and the SEC servers, so it is not run in CI.
 - **Security audit** (`security-audit.yml`) audits `requirements.txt` with `pip-audit` whenever it changes and every Monday. It fails only when a vulnerable package has a fixed version available.
 

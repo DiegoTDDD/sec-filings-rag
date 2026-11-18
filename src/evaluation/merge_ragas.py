@@ -8,20 +8,28 @@ Input:  eval/ragas/shard_*.csv, eval/answers.json
 Output: eval/ragas_results.csv, eval/ragas_results.md
 """
 
+from __future__ import annotations
+
 import csv
 import glob
 import json
+import logging
 import math
 import os
 from pathlib import Path
+from typing import Any
 
 from evaluate_ragas import METRIC_NAMES
+
+log = logging.getLogger(__name__)
+
+Row = dict[str, str]  # one CSV row
 
 OUT_CSV = Path("eval/ragas_results.csv")
 OUT_MD = Path("eval/ragas_results.md")
 
 
-def _number(value):
+def _number(value: Any) -> float | None:
     try:
         number = float(value)
     except (TypeError, ValueError):
@@ -29,9 +37,9 @@ def _number(value):
     return None if math.isnan(number) else number
 
 
-def summarize(rows):
+def summarize(rows: list[Row]) -> dict[str, dict[str, Any]]:
     """Mean and missing count per metric for a list of CSV rows (dicts)."""
-    summary = {}
+    summary: dict[str, dict[str, Any]] = {}
     for metric in METRIC_NAMES:
         values = [_number(r.get(metric)) for r in rows]
         scored = [v for v in values if v is not None]
@@ -42,7 +50,8 @@ def summarize(rows):
     return summary
 
 
-def to_markdown(groups, judge, generator):
+def to_markdown(groups: list[tuple[str, list[Row]]], judge: str, generator: str) -> str:
+    """One table row per question group, with unscored counts shown next to each mean."""
     header = "| Questions | n | " + " | ".join(METRIC_NAMES) + " |"
     lines = [
         f"RAGAS scores. Answers by `{generator}`, judged by `{judge}` (local, via Ollama).",
@@ -60,9 +69,10 @@ def to_markdown(groups, judge, generator):
     return "\n".join(lines) + "\n"
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     files = sorted(glob.glob("eval/ragas/shard_*.csv"))
-    rows = []
+    rows: list[Row] = []
     for f in files:
         with open(f, newline="", encoding="utf-8") as handle:
             rows.extend(csv.DictReader(handle))
@@ -84,8 +94,7 @@ def main():
     ]
     table = to_markdown([g for g in groups if g[1]], judge, generator)
     OUT_MD.write_text(table, encoding="utf-8")
-    print(f"merged {len(files)} shards, {len(rows)} questions\n")
-    print(table)
+    log.info("merged %d shards, %d questions\n\n%s", len(files), len(rows), table)
 
 
 if __name__ == "__main__":

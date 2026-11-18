@@ -15,9 +15,15 @@ in the Qdrant payload and in data/processed/chunks.json, so results from the
 different strategies can be compared directly.
 """
 
+from __future__ import annotations
+
 import json
 import re
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
+
+Chunk = dict[str, Any]  # one record of chunks.json / one Qdrant payload
 
 CHUNKS_PATH = Path("data/processed/chunks.json")
 RRF_K = 60  # standard constant from Cormack et al. (2009)
@@ -29,32 +35,35 @@ _STOPWORDS = frozenset(
 )
 
 
-def chunk_key(chunk):
+def chunk_key(chunk: Chunk) -> tuple[str, int]:
     """Stable identity of a chunk across Qdrant payloads and chunks.json records."""
     return (chunk["source_file"], chunk["chunk_index"])
 
 
-def tokenize(text):
+def tokenize(text: str) -> list[str]:
+    """Lower-case alphanumeric tokens without common stopwords."""
     return [t for t in _TOKEN.findall(text.lower()) if t not in _STOPWORDS]
 
 
-def load_chunks(path=CHUNKS_PATH):
+def load_chunks(path: Path | str = CHUNKS_PATH) -> list[Chunk]:
+    """Read the chunk records written by src/indexing/chunk.py."""
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 class BM25Index:
     """Okapi BM25 over the chunk texts (rank-bm25)."""
 
-    def __init__(self, chunks):
+    def __init__(self, chunks: list[Chunk]) -> None:
         from rank_bm25 import BM25Okapi
 
         self.chunks = chunks
         self._bm25 = BM25Okapi([tokenize(c["text"]) for c in chunks])
 
-    def search(self, query, n, ticker=None):
+    def search(self, query: str, n: int, ticker: str | None = None) -> list[Chunk]:
+        """Top n chunks by BM25 score, optionally restricted to one company."""
         scores = self._bm25.get_scores(tokenize(query))
         order = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
-        results = []
+        results: list[Chunk] = []
         for i in order:
             if ticker and self.chunks[i]["ticker"] != ticker:
                 continue
@@ -64,9 +73,10 @@ class BM25Index:
         return results
 
 
-def rrf_fuse(rankings, n, k=RRF_K):
+def rrf_fuse(rankings: Sequence[Sequence[Chunk]], n: int, k: int = RRF_K) -> list[Chunk]:
     """Merge ranked chunk lists with Reciprocal Rank Fusion; return the top n chunks."""
-    scores, chunks = {}, {}
+    scores: dict[tuple[str, int], float] = {}
+    chunks: dict[tuple[str, int], Chunk] = {}
     for ranking in rankings:
         for rank, chunk in enumerate(ranking, start=1):
             key = chunk_key(chunk)
@@ -76,7 +86,7 @@ def rrf_fuse(rankings, n, k=RRF_K):
     return [chunks[key] for key in order[:n]]
 
 
-def dense_search(question, n, ticker=None):
+def dense_search(question: str, n: int, ticker: str | None = None) -> list[Chunk]:
     """Dense search in Qdrant; returns payload dicts (same shape as chunks.json)."""
     import rag
     from qdrant_client import QdrantClient
@@ -99,7 +109,7 @@ def dense_search(question, n, ticker=None):
     return [h.payload for h in hits]
 
 
-def rerank(question, candidates, k):
+def rerank(question: str, candidates: list[Chunk], k: int) -> list[Chunk]:
     """Re-order candidates with the cross-encoder used by rag.py and keep the top k."""
     import rag
 

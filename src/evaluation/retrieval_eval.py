@@ -20,7 +20,10 @@ Input:  eval/eval_set.json, data/processed/chunks.json, Qdrant + Ollama running
 Output: eval/retrieval_results.json and eval/retrieval_results.md
 """
 
+from __future__ import annotations
+
 import json
+import logging
 import sys
 import time
 from pathlib import Path
@@ -28,12 +31,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "retrieval"))
 from strategies import (  # noqa: E402
     BM25Index,
+    Chunk,
     chunk_key,
     dense_search,
     load_chunks,
     rerank,
     rrf_fuse,
 )
+
+log = logging.getLogger(__name__)
+
+Rank = int | None
+Scores = dict[str, float]
 
 EVAL_PATH = Path("eval/eval_set.json")
 OUT_JSON = Path("eval/retrieval_results.json")
@@ -51,7 +60,7 @@ STRATEGIES = [
 ]
 
 
-def rank_of(results, source, adjacent=False):
+def rank_of(results: list[Chunk], source: tuple[str, int], adjacent: bool = False) -> Rank:
     """1-based rank of the source chunk in results, or None."""
     source_file, source_index = source
     for rank, chunk in enumerate(results, start=1):
@@ -63,7 +72,8 @@ def rank_of(results, source, adjacent=False):
     return None
 
 
-def summarize(ranks, shortlist_hits):
+def summarize(ranks: list[Rank], shortlist_hits: list[bool]) -> Scores:
+    """hit@1, hit@5, MRR@5 and recall@20 over all questions."""
     n = len(ranks)
     if n == 0:
         return {"hit@1": 0.0, "hit@5": 0.0, "mrr@5": 0.0, "recall@20": 0.0}
@@ -75,7 +85,10 @@ def summarize(ranks, shortlist_hits):
     }
 
 
-def run_strategies(question, bm25):
+def run_strategies(
+    question: str, bm25: BM25Index
+) -> dict[str, tuple[list[Chunk], list[Chunk]]]:
+    """For each strategy: (final top FINAL_K, SHORTLIST candidates before re-ranking)."""
     dense = dense_search(question, SHORTLIST)
     keyword = bm25.search(question, SHORTLIST)
     hybrid = rrf_fuse([dense, keyword], SHORTLIST)
@@ -89,7 +102,7 @@ def run_strategies(question, bm25):
     }
 
 
-def to_markdown(results, n_questions):
+def to_markdown(results: dict[str, dict[str, Scores]], n_questions: int) -> str:
     lines = [
         f"Retrieval on {n_questions} synthetic questions, each written from one known chunk.",
         "",
@@ -108,11 +121,16 @@ def to_markdown(results, n_questions):
     return "\n".join(lines) + "\n"
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     questions = json.loads(EVAL_PATH.read_text(encoding="utf-8"))["questions"]
     bm25 = BM25Index(load_chunks())
-    ranks = {k: {"strict": [], "adjacent": []} for k, _ in STRATEGIES}
-    shortlist = {k: {"strict": [], "adjacent": []} for k, _ in STRATEGIES}
+    ranks: dict[str, dict[str, list[Rank]]] = {
+        k: {"strict": [], "adjacent": []} for k, _ in STRATEGIES
+    }
+    shortlist: dict[str, dict[str, list[bool]]] = {
+        k: {"strict": [], "adjacent": []} for k, _ in STRATEGIES
+    }
 
     start = time.time()
     for i, q in enumerate(questions, 1):
@@ -121,7 +139,7 @@ def main():
             for mode, adjacent in (("strict", False), ("adjacent", True)):
                 ranks[key][mode].append(rank_of(top, source, adjacent))
                 shortlist[key][mode].append(rank_of(candidates, source, adjacent) is not None)
-        print(f"[{i}/{len(questions)}] {q['id']} done")
+        log.info("[%d/%d] %s done", i, len(questions), q["id"])
 
     results = {
         key: {
@@ -143,7 +161,7 @@ def main():
     )
     table = to_markdown(results, len(questions))
     OUT_MD.write_text(table, encoding="utf-8")
-    print("\n" + table)
+    log.info("\n%s", table)
 
 
 if __name__ == "__main__":

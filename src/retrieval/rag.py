@@ -21,14 +21,24 @@ Usage:
     python src/retrieval/rag.py "your question here"
 """
 
+from __future__ import annotations
+
+import logging
 import os
 import sys
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Protocol
 
 import httpx
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 from sentence_transformers import CrossEncoder
+
+if TYPE_CHECKING:
+    from strategies import BM25Index
+
+log = logging.getLogger(__name__)
 
 OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
 EMBED_MODEL = "nomic-embed-text"
@@ -54,11 +64,19 @@ SYSTEM_PROMPT = (
     "clear, concise answer in prose."
 )
 
-_reranker = None
-_bm25 = None
+
+class Retrieved(Protocol):
+    """A retrieved chunk: a Qdrant point or a BM25 hit, both exposing `.payload`."""
+
+    payload: dict[str, Any]
 
 
-def embed(text):
+_reranker: CrossEncoder | None = None
+_bm25: BM25Index | bool | None = None  # False = chunks file missing, do not retry
+
+
+def embed(text: str) -> list[float]:
+    """Embed one text with nomic-embed-text via the local Ollama server."""
     response = httpx.post(
         OLLAMA_EMBED_URL, json={"model": EMBED_MODEL, "prompt": text}, timeout=60.0
     )
@@ -66,7 +84,8 @@ def embed(text):
     return response.json()["embedding"]
 
 
-def get_reranker():
+def get_reranker() -> CrossEncoder:
+    """Load the cross-encoder once and reuse it."""
     global _reranker
     if _reranker is None:
         _reranker = CrossEncoder(RERANK_MODEL)
@@ -76,11 +95,11 @@ def get_reranker():
 class _Chunk:
     """Gives BM25 results the same `.payload` shape as Qdrant points."""
 
-    def __init__(self, payload):
+    def __init__(self, payload: dict[str, Any]) -> None:
         self.payload = payload
 
 
-def get_bm25():
+def get_bm25() -> BM25Index | None:
     """BM25 index over data/processed/chunks.json, built once; None if the file is missing."""
     global _bm25
     if _bm25 is None:
@@ -89,12 +108,14 @@ def get_bm25():
         if CHUNKS_PATH.exists():
             _bm25 = BM25Index(load_chunks(CHUNKS_PATH))
         else:
-            print(f"[rag] {CHUNKS_PATH} not found: using dense retrieval only", file=sys.stderr)
+            log.warning("%s not found: using dense retrieval only", CHUNKS_PATH)
             _bm25 = False
     return _bm25 or None
 
 
-def retrieve(question, ticker=None, mode=None):
+def retrieve(
+    question: str, ticker: str | None = None, mode: str | None = None
+) -> list[Retrieved]:
     """Hybrid (or dense) search, then cross-encoder re-rank; return the top FINAL_K chunks.
 
     If ticker is given, both searches are restricted to that company's chunks -
@@ -116,7 +137,7 @@ def retrieve(question, ticker=None, mode=None):
         with_payload=True,
     ).points
 
-    candidates = list(hits)
+    candidates: list[Retrieved] = list(hits)
     bm25 = get_bm25() if mode == "hybrid" else None
     if bm25 is not None:
         from strategies import rrf_fuse
@@ -134,7 +155,8 @@ def retrieve(question, ticker=None, mode=None):
     return [c for _, c in ranked[:FINAL_K]]
 
 
-def build_context(chunks):
+def build_context(chunks: Sequence[Retrieved]) -> str:
+    """Number each excerpt and prefix it with its source, for the prompt."""
     blocks = []
     for i, h in enumerate(chunks, 1):
         p = h.payload
@@ -143,7 +165,8 @@ def build_context(chunks):
     return "\n\n".join(blocks)
 
 
-def generate(question, context):
+def generate(question: str, context: str) -> str:
+    """Ask the LLM to answer from the context only (OpenAI-compatible chat API)."""
     payload = {
         "model": LLM_MODEL,
         "messages": [
@@ -162,7 +185,8 @@ def generate(question, context):
     return response.json()["choices"][0]["message"]["content"].strip()
 
 
-def format_sources(chunks):
+def format_sources(chunks: Sequence[Retrieved]) -> str:
+    """Source list numbered like the context, so [n] in the answer can be traced."""
     lines = []
     for i, h in enumerate(chunks, 1):
         p = h.payload
@@ -170,7 +194,7 @@ def format_sources(chunks):
     return "\n".join(lines)
 
 
-def answer_question(question, ticker=None):
+def answer_question(question: str, ticker: str | None = None) -> tuple[str, list[Retrieved]]:
     """Run the full pipeline and return (answer_text, source_chunks)."""
     chunks = retrieve(question, ticker=ticker)
     if not chunks:
@@ -180,19 +204,16 @@ def answer_question(question, ticker=None):
     return answer, chunks
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     question = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_QUESTION
-    print(f"Question: {question}\n")
-    print("Retrieving and generating...\n")
-
+    log.info("question: %s", question)
     answer, chunks = answer_question(question)
-
-    print("=" * 70)
-    print("ANSWER\n")
-    print(answer)
-    print("\n" + "=" * 70)
-    print("SOURCES\n")
-    print(format_sources(chunks))
+    # The answer is the program's output, so it goes to stdout, not the log.
+    print("=" * 70)  # noqa: T201
+    print(f"ANSWER\n\n{answer}\n")  # noqa: T201
+    print("=" * 70)  # noqa: T201
+    print(f"SOURCES\n\n{format_sources(chunks)}")  # noqa: T201
 
 
 if __name__ == "__main__":

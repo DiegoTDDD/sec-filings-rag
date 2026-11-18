@@ -13,10 +13,14 @@ cite the exact filing and section they came from.
 Input:  data/processed/*.txt + data/processed/metadata.json
 Output: data/processed/chunks.json  (list of {text, metadata} records)
 """
+
 import json
+import logging
 from pathlib import Path
 
 import nltk
+
+log = logging.getLogger(__name__)
 
 PROCESSED_DIR = Path("data/processed")
 CHUNKS_PATH = PROCESSED_DIR / "chunks.json"
@@ -25,7 +29,7 @@ TARGET_CHARS = 1000   # aim for ~1000 characters per chunk
 OVERLAP_CHARS = 150   # carry ~150 characters of context into the next chunk
 
 
-def ensure_punkt():
+def ensure_punkt() -> None:
     """Make sure NLTK's sentence tokenizer data is available (downloads once)."""
     for resource in ("punkt", "punkt_tab"):
         try:
@@ -34,9 +38,9 @@ def ensure_punkt():
             nltk.download(resource, quiet=True)
 
 
-def chunk_sentences(sentences):
+def chunk_sentences(sentences: list[str]) -> list[str]:
     """Greedily pack sentences into ~TARGET_CHARS chunks with OVERLAP_CHARS overlap."""
-    chunks = []
+    chunks: list[str] = []
     current = ""
 
     for sentence in sentences:
@@ -56,7 +60,8 @@ def chunk_sentences(sentences):
     return chunks
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     ensure_punkt()
     metadata = json.loads((PROCESSED_DIR / "metadata.json").read_text(encoding="utf-8"))
 
@@ -78,10 +83,10 @@ def main():
                     "source_file": entry["filename"],
                 }
             )
-        print(f"  {entry['filename']:45} -> {len(chunks):3} chunks")
+        log.info("  %-45s -> %3d chunks", entry["filename"], len(chunks))
 
     CHUNKS_PATH.write_text(json.dumps(records, indent=2), encoding="utf-8")
-    print(f"\nDone. {len(records)} chunks written to {CHUNKS_PATH}")
+    log.info("Done. %d chunks written to %s", len(records), CHUNKS_PATH)
 
 
 if __name__ == "__main__":

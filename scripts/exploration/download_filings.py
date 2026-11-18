@@ -58,6 +58,7 @@ def select_filings(submissions):
         recent["filingDate"],
         recent["accessionNumber"],
         recent["primaryDocument"],
+        strict=True,
     ):
         records.append(
             {

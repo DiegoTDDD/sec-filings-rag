@@ -65,7 +65,7 @@ def main():
     pairs = [(question, hit.payload["text"]) for hit in hits]
     scores = reranker.predict(pairs)
 
-    reranked = sorted(zip(scores, hits), key=lambda x: x[0], reverse=True)
+    reranked = sorted(zip(scores, hits, strict=True), key=lambda x: x[0], reverse=True)
 
     print("\n--- After cross-encoder re-ranking (top 5 of 20) ---")
     for rank, (score, hit) in enumerate(reranked[:FINAL_K], 1):

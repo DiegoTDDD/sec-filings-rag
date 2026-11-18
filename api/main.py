@@ -13,6 +13,7 @@ Run:
     uvicorn api.main:app --port 8000
 """
 import sys
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -24,7 +25,7 @@ import rag  # noqa: E402
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Load the cross-encoder and the BM25 index once at startup so the first request isn't slow."""
     rag.get_reranker()
     rag.get_bm25()
@@ -61,12 +62,14 @@ class AskResponse(BaseModel):
 
 
 @app.get("/health")
-def health():
+def health() -> dict[str, str]:
+    """Liveness check."""
     return {"status": "ok"}
 
 
 @app.post("/ask", response_model=AskResponse)
-def ask(request: AskRequest):
+def ask(request: AskRequest) -> AskResponse:
+    """Answer a question from the filings, with the sources used."""
     # Normalize/validate the optional ticker; ignore anything unexpected.
     ticker = request.ticker.upper() if request.ticker else None
     if ticker not in VALID_TICKERS:

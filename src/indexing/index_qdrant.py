@@ -14,7 +14,9 @@ re-indexing never duplicates points.
 
 Prereqs: Ollama running with nomic-embed-text pulled, Qdrant up on :6333.
 """
+
 import json
+import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -22,6 +24,8 @@ from pathlib import Path
 import httpx
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
+
+log = logging.getLogger(__name__)
 
 CHUNKS_PATH = Path("data/processed/chunks.json")
 COLLECTION = "sec_filings"
@@ -38,7 +42,7 @@ MAX_RETRIES = 3
 _client = httpx.Client(timeout=120.0)
 
 
-def embed(text):
+def embed(text: str) -> list[float]:
     """Return the embedding for one chunk, truncating over-long input and retrying."""
     safe_text = text[:MAX_CHARS]
     last_error = None
@@ -55,26 +59,27 @@ def embed(text):
     raise RuntimeError(f"embedding failed after {MAX_RETRIES} tries: {last_error}")
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     chunks = json.loads(CHUNKS_PATH.read_text(encoding="utf-8"))
-    print(f"Loaded {len(chunks)} chunks.")
+    log.info("Loaded %d chunks.", len(chunks))
 
     dim = len(embed(chunks[0]["text"]))
-    print(f"Embedding dimension: {dim}")
+    log.info("Embedding dimension: %d", dim)
 
     client = QdrantClient(url=QDRANT_URL)
     client.recreate_collection(
         collection_name=COLLECTION,
         vectors_config=VectorParams(size=dim, distance=Distance.COSINE),
     )
-    print(f"Collection '{COLLECTION}' created (cosine, dim={dim}).")
+    log.info("Collection %r created (cosine, dim=%d).", COLLECTION, dim)
 
     texts = [c["text"] for c in chunks]
-    print(f"Embedding {len(texts)} chunks with {WORKERS} workers...")
+    log.info("Embedding %d chunks with %d workers...", len(texts), WORKERS)
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         vectors = list(pool.map(embed, texts))
 
-    print("Embeddings done. Upserting to Qdrant...")
+    log.info("Embeddings done. Upserting to Qdrant...")
     total = 0
     for start in range(0, len(chunks), BATCH_SIZE):
         batch_chunks = chunks[start:start + BATCH_SIZE]
@@ -97,10 +102,10 @@ def main():
         ]
         client.upsert(collection_name=COLLECTION, points=points)
         total += len(points)
-        print(f"  upserted {total}/{len(chunks)}")
+        log.info("  upserted %d/%d", total, len(chunks))
 
     count = client.count(collection_name=COLLECTION).count
-    print(f"\nDone. Qdrant collection '{COLLECTION}' now holds {count} points.")
+    log.info("Done. Qdrant collection %r now holds %d points.", COLLECTION, count)
 
 
 if __name__ == "__main__":

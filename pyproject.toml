@@ -14,7 +14,17 @@ addopts = "-ra"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# CI helper scripts under .github are not part of the project code.
+extend-exclude = [".github"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP"]
-ignore = ["E402"]
+# ANN: type hints required on every function in the pipeline and the API.
+# T20: no print() in pipeline code; progress goes through logging.
+select = ["E", "F", "I", "B", "UP", "ANN", "T20"]
+ignore = ["E402", "ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests, manual scripts and the Streamlit apps are not held to the two rules above.
+"tests/**" = ["ANN", "T20"]
+"scripts/**" = ["ANN", "T20"]
+"dashboard/**" = ["ANN", "T20"]

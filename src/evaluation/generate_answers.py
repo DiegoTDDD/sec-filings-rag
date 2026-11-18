@@ -12,22 +12,30 @@ answer plus the retrieved contexts are stored. Scoring is a separate step
 Output: eval/answers.json
 """
 
+from __future__ import annotations
+
 import json
+import logging
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "retrieval"))
 from rag import LLM_MODEL, answer_question  # noqa: E402
+
+log = logging.getLogger(__name__)
 
 CURATED = Path("eval/curated_questions.json")
 SYNTHETIC = Path("eval/eval_set.json")
 OUT_PATH = Path("eval/answers.json")
 
 
-def load_questions(curated=CURATED, synthetic=SYNTHETIC):
+def load_questions(
+    curated: Path | str = CURATED, synthetic: Path | str = SYNTHETIC
+) -> list[dict[str, Any]]:
     """Curated questions first, then the synthetic ones, each tagged with its origin."""
-    items = []
+    items: list[dict[str, Any]] = []
     for path, origin in ((curated, "curated"), (synthetic, "synthetic")):
         if not Path(path).exists():
             continue
@@ -43,7 +51,8 @@ def load_questions(curated=CURATED, synthetic=SYNTHETIC):
     return items
 
 
-def main():
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     questions = load_questions()
     if not questions:
         sys.exit("no evaluation questions found")
@@ -51,7 +60,7 @@ def main():
     for i, q in enumerate(questions, 1):
         answer, chunks = answer_question(q["question"])
         rows.append(dict(q, answer=answer, contexts=[c.payload["text"] for c in chunks]))
-        print(f"[{i}/{len(questions)}] {q['id']} answered ({len(chunks)} contexts)")
+        log.info("[%d/%d] %s answered (%d contexts)", i, len(questions), q["id"], len(chunks))
     OUT_PATH.write_text(
         json.dumps(
             {"generator": LLM_MODEL, "seconds": round(time.time() - start), "rows": rows},
@@ -59,7 +68,7 @@ def main():
         ),
         encoding="utf-8",
     )
-    print(f"Wrote {len(rows)} answers to {OUT_PATH}")
+    log.info("Wrote %d answers to %s", len(rows), OUT_PATH)
 
 
 if __name__ == "__main__":

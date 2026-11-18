@@ -1,3 +1,5 @@
+> **Historical.** This is the first evaluation (6 questions, the generator judging itself). It was replaced by the method in [ADR 0006](adr/0006-evaluation-method.md); current results are in [`eval/`](../eval) and the README's Evaluation section.
+
 # RAGAS Evaluation — Results and Notes
 
 ## Setup
