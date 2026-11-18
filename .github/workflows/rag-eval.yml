@@ -29,7 +29,8 @@ env:
   PIP_NO_CACHE_DIR: "1"
   GEN_MODEL: llama3.2:3b
   JUDGE_MODEL: qwen2.5:7b
-  EVAL_CANDIDATES: "80"
+  EVAL_TARGET: "60"
+  EVAL_CANDIDATES: "160"
 
 jobs:
   retrieval:
@@ -183,7 +184,8 @@ jobs:
 
   report:
     needs: judge
-    if: ${{ !cancelled() }}
+    # merge whatever shards finished, but only if judging actually started
+    if: ${{ !cancelled() && needs.judge.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

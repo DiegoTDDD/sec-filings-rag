@@ -14,7 +14,11 @@ Input:  data/processed/chunks.json
 Output: eval/eval_set.json
 
 Env: GEN_MODEL (default llama3.2:3b), OLLAMA_URL (default http://localhost:11434),
-     EVAL_CANDIDATES (default 80): chunks sampled before filtering.
+     EVAL_TARGET (default 60): stop once this many valid questions are kept.
+     EVAL_CANDIDATES (default 160): most chunks tried. Generation is not exactly
+     reproducible on CPU and roughly a third of questions are discarded, so the
+     script keeps drawing chunks (in the same stratified order) until the target
+     is met instead of trying a fixed number.
 """
 
 import json
@@ -33,7 +37,8 @@ from strategies import chunk_key, load_chunks  # noqa: E402
 OUT_PATH = Path("eval/eval_set.json")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 GEN_MODEL = os.environ.get("GEN_MODEL", "llama3.2:3b")
-CANDIDATES = int(os.environ.get("EVAL_CANDIDATES", "80"))
+TARGET = int(os.environ.get("EVAL_TARGET", "60"))
+CANDIDATES = int(os.environ.get("EVAL_CANDIDATES", "160"))
 MIN_CHUNK_CHARS = 600
 SEED = 42
 
@@ -126,11 +131,13 @@ def ask_model(chunk, client):
 def main():
     chunks = load_chunks()
     sample = stratified_sample(chunks, CANDIDATES)
-    print(f"{len(chunks)} chunks; {len(sample)} sampled across company/form/section")
+    print(f"{len(chunks)} chunks; up to {len(sample)} candidates, target {TARGET} questions")
 
     items, rejected = [], 0
     with httpx.Client(timeout=300.0) as client:
         for i, chunk in enumerate(sample, 1):
+            if len(items) >= TARGET:
+                break
             try:
                 item = ask_model(chunk, client)
             except Exception as exc:  # noqa: BLE001 - a bad generation just drops that chunk
