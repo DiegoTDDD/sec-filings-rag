@@ -14,7 +14,7 @@ for f in files:
         resolved = os.path.join(os.environ.get("RUNNER_TEMP", "/tmp"), "resolved-" + f.replace("/", "_"))
         if os.path.exists(resolved):
             os.remove(resolved)  # uv would reuse an old output file as version "locks"; resolve from scratch
-        c = subprocess.run([sys.executable, "-m", "uv", "pip", "compile", f, "--python-version", "3.11", "-o", resolved, "-q", "--refresh", "--upgrade"],
+        c = subprocess.run([sys.executable, "-m", "uv", "pip", "compile", f, "--python-version", "3.11.5", "-o", resolved, "-q", "--refresh", "--upgrade"],
                            capture_output=True, text=True)
         if c.returncode != 0:
             print(f"::error::could not resolve {f}: {c.stderr[-300:]}"); sys.exit(2)
@@ -56,7 +56,7 @@ def installable(req_file, pkg, fix):
         kept.append(f"{pkg}>={fix}")
         tmp = os.path.join(os.environ.get("RUNNER_TEMP", "/tmp"), "installable-test.txt")
         open(tmp, "w", encoding="utf-8").write("\n".join(kept) + "\n")
-        c = subprocess.run([sys.executable, "-m", "uv", "pip", "compile", tmp, "--python-version", "3.11",
+        c = subprocess.run([sys.executable, "-m", "uv", "pip", "compile", tmp, "--python-version", "3.11.5",
                             "-q", "-o", os.devnull, "--refresh", "--upgrade"], capture_output=True, text=True)
         if c.returncode == 0:
             return True, sorted(relax), ""

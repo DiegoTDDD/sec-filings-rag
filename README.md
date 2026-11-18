@@ -166,7 +166,7 @@ The pipeline depends on three local services: **Qdrant** (vector store, in Docke
 order. Commands assume a `bash`-style shell.
 
 ### 1. Prerequisites
-- Python 3.11 (conda recommended)
+- Python 3.11.5 or a newer 3.11 release (conda recommended; `soupsieve` 4 needs 3.11.5+)
 - Docker (for Qdrant)
 - [Ollama](https://ollama.com) installed and running, with the models pulled:
   ```bash
