@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-for sub in ("src/indexing", "src/ingestion", "src/retrieval"):
+for sub in ("src/indexing", "src/ingestion", "src/retrieval", "src/evaluation"):
     path = str(ROOT / sub)
     if path not in sys.path:
         sys.path.insert(0, path)

@@ -1,0 +1,113 @@
+name: RAG evaluation
+
+# Builds the full index on a GitHub runner (SEC download, chunking, Ollama embeddings, Qdrant), writes a
+# synthetic question set from the indexed chunks with a local LLM, and compares retrieval strategies
+# (dense, BM25, hybrid RRF, each with and without the cross-encoder re-ranker). Everything runs locally on
+# the runner: no API keys, no cost. Results are uploaded as the "rag-eval" artifact and shown in the run
+# summary. Heavy, so it runs on demand, when this file changes and once a month.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 6 2 * *"
+  push:
+    paths:
+      - ".github/workflows/rag-eval.yml"
+
+permissions:
+  contents: read
+  actions: write   # only used to keep the monthly schedule enabled (see last step)
+
+env:
+  PIP_NO_CACHE_DIR: "1"
+  GEN_MODEL: llama3.2:3b
+  EVAL_CANDIDATES: "80"
+
+jobs:
+  retrieval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space (torch, the Ollama models and the filings need it)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ollama with the embedding and generation models
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (pgrep -x ollama >/dev/null || nohup ollama serve > ollama.log 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:11434/api/tags >/dev/null; then echo "ollama is up"; break; fi
+            sleep 2
+          done
+          ollama pull nomic-embed-text
+          ollama pull "$GEN_MODEL"
+          ollama list
+
+      - name: Qdrant
+        run: |
+          docker run -d --name qdrant -p 127.0.0.1:6333:6333 -p 127.0.0.1:6334:6334 qdrant/qdrant
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:6333/ >/dev/null; then echo "qdrant is up"; break; fi
+            sleep 2
+          done
+
+      - name: Build the index (ingest, chunk, embed)
+        run: |
+          python src/ingestion/ingest.py 2>&1 | tail -5
+          python src/indexing/chunk.py 2>&1 | tail -3
+          python src/indexing/index_qdrant.py 2>&1 | tail -3
+
+      - name: Write the synthetic question set
+        run: |
+          python src/evaluation/build_eval_set.py 2>&1 | tail -15
+          python - <<'PY'
+          import json, sys
+          n = len(json.load(open("eval/eval_set.json"))["questions"])
+          print(f"questions kept: {n}")
+          if n < 50:
+              print(f"::error::only {n} valid questions were generated (need at least 50)")
+              sys.exit(1)
+          PY
+
+      - name: Compare retrieval strategies
+        run: |
+          python src/evaluation/retrieval_eval.py 2>&1 | tail -15
+          cat eval/retrieval_results.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-eval
+          path: eval/
+          if-no-files-found: warn
+
+      - name: Show the logs on failure
+        if: failure()
+        run: |
+          tail -30 ollama.log || true
+          docker logs qdrant 2>&1 | tail -15 || true
+
+      - name: Clean up
+        if: always()
+        run: docker rm -f qdrant || true
+
+      - name: Keep the monthly schedule enabled
+        if: ${{ always() && github.event_name == 'schedule' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/rag-eval.yml/enable"
